@@ -1,0 +1,182 @@
+name: Build & Release
+
+# Runs automatically when you push a version tag like v2.2.0
+# Also runnable manually from GitHub → Actions → Run workflow
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+
+  # ── Mac DMG ───────────────────────────────────────────────────────────────────
+  build-mac:
+    name: Mac DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Build Mac DMG
+        run: chmod +x build_all.sh && ./build_all.sh --mac-only
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false   # skip code-signing in CI
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OfflineBeats-mac
+          path: releases/OfflineBeats-mac.dmg
+          if-no-files-found: error
+
+  # ── Windows EXE ───────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ffmpeg
+        run: choco install ffmpeg --no-progress -y
+        shell: pwsh
+
+      - name: Download bundled Python 3.11 for app
+        run: |
+          $url = "https://github.com/astral-sh/python-build-standalone/releases/download/20241002/cpython-3.11.10+20241002-x86_64-pc-windows-msvc-shared-install_only.tar.gz"
+          Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\py-win.tar.gz" -UseBasicParsing
+          New-Item -ItemType Directory -Force -Path "frontend\resources\python" | Out-Null
+          tar -xzf "$env:TEMP\py-win.tar.gz" --strip-components=1 -C "frontend\resources\python"
+        shell: pwsh
+
+      - name: Install Python packages into bundled Python
+        run: frontend\resources\python\python.exe -m pip install flask flask-cors yt-dlp spotdl mutagen -q --disable-pip-version-check
+        shell: cmd
+
+      - name: Copy ffmpeg.exe into resources
+        run: |
+          $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
+          Copy-Item $ffmpeg "frontend\resources\ffmpeg.exe"
+        shell: pwsh
+
+      - name: Copy backend into resources
+        run: xcopy /E /I /Q /Y backend frontend\resources\backend
+        shell: cmd
+
+      - name: Install Node packages
+        run: npm install --silent
+        working-directory: frontend
+
+      - name: Build React app
+        run: npm run build --silent
+        working-directory: frontend
+
+      - name: Package Windows EXE
+        run: npm run dist:win -- --publish never
+        working-directory: frontend
+
+      - name: Copy EXE to releases folder
+        run: |
+          New-Item -ItemType Directory -Force -Path releases | Out-Null
+          $exe = Get-ChildItem -Path "dist-electron" -Filter "*.exe" -Recurse |
+                 Sort-Object LastWriteTime -Descending |
+                 Select-Object -First 1
+          Copy-Item $exe.FullName "releases\OfflineBeats-win-setup.exe"
+          Write-Host "EXE ready: releases\OfflineBeats-win-setup.exe"
+        shell: pwsh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OfflineBeats-win
+          path: releases\OfflineBeats-win-setup.exe
+          if-no-files-found: error
+
+  # ── Android APK ───────────────────────────────────────────────────────────────
+  build-android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    continue-on-error: true   # don't block the release if APK build fails
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install mobile dependencies
+        run: npm ci
+        working-directory: mobile
+
+      - name: Build APK via EAS cloud
+        id: build
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          OUTPUT=$(eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive 2>&1)
+          echo "$OUTPUT"
+          APK_URL=$(echo "$OUTPUT" | grep -oE 'https://expo\.dev/artifacts/[^ ]+\.apk' | tail -1 || \
+                    echo "$OUTPUT" | grep -oE 'https://[^ ]+\.apk' | tail -1 || echo "")
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download APK
+        if: steps.build.outputs.apk_url != ''
+        run: |
+          mkdir -p releases
+          curl -L "${{ steps.build.outputs.apk_url }}" -o releases/OfflineBeats-android.apk
+
+      - uses: actions/upload-artifact@v4
+        if: steps.build.outputs.apk_url != ''
+        with:
+          name: OfflineBeats-android
+          path: releases/OfflineBeats-android.apk
+          if-no-files-found: warn
+
+  # ── Create GitHub Release with all 3 files ───────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [build-mac, build-windows, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "OfflineBeats ${{ github.ref_name }}"
+          body: |
+            ## Download OfflineBeats ${{ github.ref_name }}
+
+            | Platform | Download |
+            |----------|----------|
+            | 🍎 **Mac** | OfflineBeats-mac.dmg |
+            | 🪟 **Windows** | OfflineBeats-win-setup.exe |
+            | 🤖 **Android** | OfflineBeats-android.apk |
+
+            > **Mac:** Open the DMG and drag to Applications. Right-click → Open if you see a security warning.
+            > **Android:** Enable "Install from unknown sources" in Settings before installing.
+          files: |
+            artifacts/OfflineBeats-mac/OfflineBeats-mac.dmg
+            artifacts/OfflineBeats-win/OfflineBeats-win-setup.exe
+            artifacts/OfflineBeats-android/OfflineBeats-android.apk
+          fail_on_unmatched_files: false
