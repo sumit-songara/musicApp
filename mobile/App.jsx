@@ -126,7 +126,7 @@ export default function App() {
             Capability.SkipToPrevious,
             Capability.SeekTo,
           ],
-          compactCapabilities: [Capability.SkipToPrevious, Capability.Play, Capability.SkipToNext],
+          compactCapabilities: [Capability.SkipToPrevious, Capability.Pause, Capability.SkipToNext],
           progressUpdateEventInterval: 1,
         })
       } catch (err) {
