@@ -160,13 +160,13 @@ export default function PlaylistScreen() {
     setDownloading(true)
     setDlTotal(pending.length)
     const failed = []   // { title, error }
-    let lastNotifMs = 0
 
     for (let i = 0; i < pending.length; i++) {
       if (cancelRef.current) break
       const track = pending[i]
       setDlId(track.id); setDlIdx(i + 1); setDlTitle(track.title); setDlProg(0); setDlWritten(0); setDlTotalBytes(0)
 
+      // One notification per song — no mid-song updates to avoid notification spam
       await postDownloadNotif({ title: track.title, current: i + 1, total: pending.length, pct: 0 })
 
       try {
@@ -174,15 +174,10 @@ export default function PlaylistScreen() {
           track,
           playlist.id,
           ({ pct, writtenBytes, totalBytes }) => {
+            // Update in-app UI only — no extra notifications during download
             setDlProg(pct)
             setDlWritten(writtenBytes || 0)
             setDlTotalBytes(totalBytes || 0)
-            // Update notification at most every 3 seconds to avoid flooding
-            const now = Date.now()
-            if (now - lastNotifMs > 3000) {
-              lastNotifMs = now
-              postDownloadNotif({ title: track.title, current: i + 1, total: pending.length, pct }).catch(() => {})
-            }
           },
           resumeRef,
           // onMetaResolved: fires as soon as YouTube videoId+thumbnail are known,

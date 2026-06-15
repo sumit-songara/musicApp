@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-export const APP_VERSION = '2.1.6'
+export const APP_VERSION = '2.1.8'
 
 const RELEASES_API =
   'https://api.github.com/repos/sumit-songara/musicApp/releases/latest'
