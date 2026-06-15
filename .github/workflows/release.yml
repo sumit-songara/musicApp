@@ -120,28 +120,42 @@ jobs:
         working-directory: mobile
 
       - name: Build APK via EAS cloud
-        id: build
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: Download finished APK from EAS
         working-directory: mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          OUTPUT=$(eas build \
+          mkdir -p ../releases
+          # Get the download URL of the most recent finished android build
+          APK_URL=$(eas build:list \
             --platform android \
-            --profile preview \
-            --non-interactive 2>&1)
-          echo "$OUTPUT"
-          APK_URL=$(echo "$OUTPUT" | grep -oE 'https://expo\.dev/artifacts/[^ ]+\.apk' | tail -1 || \
-                    echo "$OUTPUT" | grep -oE 'https://[^ ]+\.apk' | tail -1 || echo "")
-          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+            --status finished \
+            --limit 1 \
+            --json \
+            --non-interactive 2>/dev/null \
+            | python3 -c "
+          import json, sys
+          builds = json.load(sys.stdin)
+          if builds:
+              url = (builds[0].get('artifacts') or {}).get('buildUrl', '')
+              print(url)
+          " 2>/dev/null || echo "")
 
-      - name: Download APK
-        if: steps.build.outputs.apk_url != ''
-        run: |
-          mkdir -p releases
-          curl -L "${{ steps.build.outputs.apk_url }}" -o releases/OfflineBeats-android.apk
+          if [ -n "$APK_URL" ]; then
+            echo "Downloading APK from: $APK_URL"
+            curl -L "$APK_URL" -o ../releases/OfflineBeats-android.apk
+            ls -lh ../releases/OfflineBeats-android.apk
+          else
+            echo "Could not get APK URL — check expo.dev/builds manually"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
-        if: steps.build.outputs.apk_url != ''
         with:
           name: OfflineBeats-android
           path: releases/OfflineBeats-android.apk
