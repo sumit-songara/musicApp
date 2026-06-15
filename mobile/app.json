@@ -16,7 +16,10 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.offlinebeats.app",
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "fetch"],
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
         "NSMicrophoneUsageDescription": "Not used",
         "NSAppleMusicUsageDescription": "Access your music library",
         "NSPhotoLibraryUsageDescription": "Save downloaded music files",
@@ -40,7 +43,10 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.VIBRATE"
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ]
     },
     "plugins": [
@@ -62,6 +68,12 @@
           "color": "#1DB954"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "453b1e1f-a1e2-46af-9a40-419e9770dc05"
+      }
+    },
+    "owner": "sumit-songara"
   }
 }
