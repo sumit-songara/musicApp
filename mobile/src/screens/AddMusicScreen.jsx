@@ -9,6 +9,7 @@ import { useStore } from '../store/useStore'
 import { fetchYouTubePlaylist, fetchSpotifyPlaylist, detectSource } from '../services/downloader'
 import { savePlaylists, saveTrack } from '../services/db'
 import uuid from '../services/uuid'
+import { APP_VERSION } from '../services/updater'
 import { C, R, S } from '../theme'
 
 export default function AddMusicScreen() {
@@ -166,6 +167,9 @@ export default function AddMusicScreen() {
             ))}
           </View>
         </View>
+
+        {/* App version */}
+        <Text style={s.version}>OfflineBeats v{APP_VERSION}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -208,6 +212,8 @@ const s = StyleSheet.create({
   stepNum:   { width: 28, height: 28, borderRadius: 14, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   stepNumText:{ color: '#000', fontWeight: '900', fontSize: 13 },
   stepText:  { color: C.textSub, fontSize: 14, flex: 1, lineHeight: 20 },
+
+  version: { textAlign: 'center', color: C.muted, fontSize: 12, paddingBottom: 32 },
 
   overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center' },
   overlayCard: { backgroundColor: C.surface, borderRadius: R.xl, padding: 32, alignItems: 'center', gap: 14, width: '75%', borderWidth: 1, borderColor: C.border },
