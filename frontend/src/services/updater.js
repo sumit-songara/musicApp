@@ -2,7 +2,7 @@
 // Bump this every release. Must match the "version" field in package.json
 // and the tag you create on GitHub (e.g. tag "v2.1.0" for version "2.1.0").
 
-const APP_VERSION = '2.1.0'
+const APP_VERSION = '2.1.6'
 
 const RELEASES_API =
   'https://api.github.com/repos/sumit-songara/musicApp/releases/latest'
