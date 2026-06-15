@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #121212;
+  --bg-surface: #181818;
+  --bg-elevated: #242424;
+  --bg-elevated-2: #2a2a2a;
+  --accent: #1DB954;
+  --accent-bright: #1ed760;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-muted: #727272;
+  --player-height: 90px;
+  --sidebar-width: 248px;
+  --titlebar-height: 0px;
+}
+
+/* On mobile: shrink player, stack above bottom nav */
+@media (max-width: 767px) {
+  :root {
+    --player-height: 72px;
+  }
+}
+
+/* Electron titlebar offset on Mac */
+.is-electron-mac { --titlebar-height: 28px; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+body {
+  color: var(--text-primary);
+  font-family: 'Circular', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #404040; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* ── Range inputs ────────────────────────────────────────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  height: 4px;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -4px;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+}
+input[type='range']:hover::-webkit-slider-thumb {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* ── Now playing bars ──────────────────────────────────────────────────────── */
+.now-playing-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.now-playing-bars span {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: bottom;
+}
+.now-playing-bars span:nth-child(1) { animation: bar 1.1s ease-in-out infinite; }
+.now-playing-bars span:nth-child(2) { animation: bar 1.1s ease-in-out 0.22s infinite; }
+.now-playing-bars span:nth-child(3) { animation: bar 1.1s ease-in-out 0.44s infinite; }
+@keyframes bar {
+  0%, 100% { height: 4px; }
+  50%       { height: 14px; }
+}
+
+/* ── Player bar ────────────────────────────────────────────────────────────── */
+.player-bar {
+  background: #0e0e0e;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+/* Glassmorphism only on desktop where GPU handles it well */
+@media (min-width: 768px) {
+  .player-bar {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(10,10,10,0.92);
+  }
+}
+
+/* ── Album art ─────────────────────────────────────────────────────────────── */
+@keyframes spin-album {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.album-spin         { animation: spin-album 12s linear infinite; }
+.album-spin.paused  { animation-play-state: paused; }
+
+/* ── Page fade ─────────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.35s ease both; }
+
+/* ── Glow button ───────────────────────────────────────────────────────────── */
+.btn-glow {
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 24px rgba(29,185,84,0.5);
+  transform: scale(1.04);
+}
+.btn-glow:active { transform: scale(0.97); }
+
+/* ── Card hover ────────────────────────────────────────────────────────────── */
+.playlist-card .play-overlay {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.playlist-card:hover .play-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Seek / volume track highlight ────────────────────────────────────────── */
+.seek-wrap:hover input[type='range']::-webkit-slider-runnable-track { background: rgba(255,255,255,0.25); }
+.seek-wrap:hover .track-fill { background: var(--accent) !important; }
+
+/* ── Mac Electron drag region ─────────────────────────────────────────────── */
+.mac-drag { -webkit-app-region: drag; user-select: none; }
+.mac-no-drag { -webkit-app-region: no-drag; }
+
+/* ── Seek thumb ────────────────────────────────────────────────────────────── */
+.seek-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.1s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.seek-track:hover .seek-thumb { transform: translate(-50%, -50%) scale(1); }

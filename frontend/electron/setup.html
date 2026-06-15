@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 0;
+      padding: 40px;
+      -webkit-app-region: drag;
+    }
+    .logo { font-size: 56px; margin-bottom: 20px; animation: float 2s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    h1 { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+    .sub { color: #b3b3b3; font-size: 14px; margin-bottom: 32px; text-align: center; }
+
+    .step {
+      width: 100%;
+      max-width: 400px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.3s;
+    }
+    .step.ok { border-color: #1DB954; }
+    .step.warn { border-color: #facc15; }
+    .step-icon { font-size: 22px; flex-shrink: 0; }
+    .step-text { flex: 1; }
+    .step-title { font-size: 14px; font-weight: 600; }
+    .step-desc { font-size: 12px; color: #727272; margin-top: 2px; }
+    .badge {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .badge.ok { background: #1DB95422; color: #1DB954; }
+    .badge.missing { background: #facc1522; color: #facc15; }
+    .badge.loading { background: #ffffff11; color: #888; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+    #btn {
+      margin-top: 20px;
+      padding: 14px 40px;
+      background: #1DB954;
+      color: #000;
+      font-weight: 800;
+      font-size: 15px;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
+      -webkit-app-region: no-drag;
+    }
+    #btn:hover { transform: scale(1.04); box-shadow: 0 0 24px rgba(29,185,84,0.4); }
+    #btn:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
+
+    #log {
+      width: 100%;
+      max-width: 400px;
+      max-height: 80px;
+      overflow-y: auto;
+      font-size: 11px;
+      color: #555;
+      font-family: monospace;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">♫</div>
+  <h1>OfflineBeats</h1>
+  <p class="sub">One-time setup — takes about 30 seconds</p>
+
+  <div class="step" id="s-python">
+    <span class="step-icon">🐍</span>
+    <div class="step-text">
+      <div class="step-title">Python 3.11</div>
+      <div class="step-desc">Required to run the music server</div>
+    </div>
+    <span class="badge loading" id="b-python">Checking…</span>
+  </div>
+
+  <div class="step" id="s-ffmpeg">
+    <span class="step-icon">🎧</span>
+    <div class="step-text">
+      <div class="step-title">FFmpeg</div>
+      <div class="step-desc">Converts audio to MP3</div>
+    </div>
+    <span class="badge loading" id="b-ffmpeg">Checking…</span>
+  </div>
+
+  <div class="step" id="s-pkgs">
+    <span class="step-icon">📦</span>
+    <div class="step-text">
+      <div class="step-title">Python packages</div>
+      <div class="step-desc">Flask, yt-dlp, spotdl, mutagen</div>
+    </div>
+    <span class="badge loading" id="b-pkgs">Pending</span>
+  </div>
+
+  <button id="btn" disabled>Checking…</button>
+  <div id="log"></div>
+
+  <script>
+    let pythonBin = null
+
+    async function check() {
+      const status = await window.electronAPI.setupStatus()
+      pythonBin = status.python
+
+      setStep('python', !!status.python, status.python || 'Not found')
+      setStep('ffmpeg', status.hasFfmpeg, status.hasFfmpeg ? 'Found' : 'Not found')
+
+      const btn = document.getElementById('btn')
+      if (!status.python) {
+        btn.textContent = 'Python not found — see README'
+        btn.disabled = false
+        btn.style.background = '#e91429'
+        btn.onclick = () => window.electronAPI.setupAbort()
+      } else if (!status.hasFfmpeg) {
+        document.getElementById('b-pkgs').textContent = 'Pending'
+        btn.textContent = 'ffmpeg missing — install via Homebrew'
+        btn.disabled = false
+        btn.style.background = '#facc15'
+        btn.style.color = '#000'
+        btn.onclick = () => window.electronAPI.setupAbort()
+      } else {
+        document.getElementById('b-pkgs').className = 'badge loading'
+        document.getElementById('b-pkgs').textContent = 'Ready'
+        btn.textContent = 'Install & Launch'
+        btn.disabled = false
+        btn.onclick = install
+      }
+    }
+
+    function setStep(id, ok, label) {
+      document.getElementById('s-' + id).className = 'step ' + (ok ? 'ok' : 'warn')
+      document.getElementById('b-' + id).className = 'badge ' + (ok ? 'ok' : 'missing')
+      document.getElementById('b-' + id).textContent = label
+    }
+
+    async function install() {
+      const btn = document.getElementById('btn')
+      const log = document.getElementById('log')
+      btn.disabled = true
+      btn.textContent = 'Installing packages…'
+      log.style.display = 'block'
+
+      document.getElementById('b-pkgs').className = 'badge loading'
+      document.getElementById('b-pkgs').textContent = 'Installing…'
+
+      const result = await window.electronAPI.installDeps(pythonBin)
+      log.textContent = result.log
+
+      if (result.ok) {
+        setStep('pkgs', true, 'Installed')
+        btn.textContent = 'Launching OfflineBeats…'
+        await window.electronAPI.setupComplete()
+      } else {
+        setStep('pkgs', false, 'Failed')
+        btn.disabled = false
+        btn.textContent = 'Retry'
+        btn.onclick = install
+      }
+    }
+
+    check()
+  </script>
+</body>
+</html>

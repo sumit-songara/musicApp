@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1ed760"/>
+      <stop offset="100%" stop-color="#0d8f3a"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <!-- Headphones -->
+  <path d="M512 200 C350 200 218 332 218 494 L218 560 C218 585 238 605 263 605 L308 605 C333 605 353 585 353 560 L353 494 C353 407 427 336 512 336 C597 336 671 407 671 494 L671 560 C671 585 691 605 716 605 L761 605 C786 605 806 585 806 560 L806 494 C806 332 674 200 512 200 Z" fill="black" opacity="0.8"/>
+  <!-- Left ear cup -->
+  <rect x="218" y="484" width="135" height="140" rx="30" fill="black" opacity="0.9"/>
+  <!-- Right ear cup -->
+  <rect x="671" y="484" width="135" height="140" rx="30" fill="black" opacity="0.9"/>
+  <!-- Music note -->
+  <text x="512" y="780" text-anchor="middle" font-size="200" fill="black" opacity="0.7" font-family="Arial">♫</text>
+</svg>

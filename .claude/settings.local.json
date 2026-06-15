@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew install *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(xargs kill -9)",
+      "Bash(curl -s -X DELETE http://localhost:7777/api/playlists/9)",
+      "Bash(python3.11 app.py)",
+      "Bash(curl -s http://localhost:7777/api/playlists)",
+      "Bash(curl -s -X POST http://localhost:7777/api/download -H 'Content-Type: application/json' -d '{\"url\":\"https://open.spotify.com/playlist/5tdrMjDGmhyOUVu7NHgujO?si=c459c35be1a44b83\"}')",
+      "Bash(python3.11 -m json.tool)",
+      "Bash(sqlite3 *)",
+      "Bash(yt-dlp --cookies-from-browser safari -f \"bestaudio\" --no-download \"https://www.youtube.com/watch?v=aiTXImcbhoY\")",
+      "Bash(yt-dlp --cookies-from-browser brave --js-runtimes node --list-formats \"https://www.youtube.com/watch?v=aiTXImcbhoY\")"
+    ]
+  }
+}

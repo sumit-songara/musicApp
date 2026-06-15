@@ -1,0 +1,17 @@
+node_modules/
+downloads/
+dist-electron/
+releases/
+frontend/resources/python/
+frontend/resources/python-win/
+frontend/resources/ffmpeg
+frontend/resources/ffmpeg.exe
+frontend/resources/backend/
+*.pyc
+__pycache__/
+.env
+.DS_Store
+*.dmg
+*.exe
+*.apk
+*.zip
