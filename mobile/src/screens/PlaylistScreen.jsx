@@ -7,9 +7,7 @@ import { useRoute, useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system'
 import { useStore } from '../store/useStore'
-import { getPlaylistWithTracks, saveTrack, getPlaylists, deletePlaylistFromDb } from '../services/db'
-import { downloadTrack } from '../services/downloader'
-import { postDownloadNotif, postDoneNotif, clearDownloadNotif } from '../services/notifications'
+import { getPlaylistWithTracks, deletePlaylistFromDb } from '../services/db'
 import { C, R, S, TAB_BAR_H, PLAYER_H } from '../theme'
 
 function fmt(secs) {
@@ -102,24 +100,27 @@ const TrackRow = memo(function TrackRow({ track, index, isActive, isPlaying, isD
 export default function PlaylistScreen() {
   const { params }   = useRoute()
   const navigation   = useNavigation()
-  const [playlist, setPlaylist]       = useState(null)
-  const [loading, setLoading]         = useState(true)
-  const [loadErr, setLoadErr]         = useState(null)
-  const [dlId, setDlId]               = useState(null)
-  const [dlProg, setDlProg]           = useState(0)
-  const [dlWritten, setDlWritten]     = useState(0)
-  const [dlTotalBytes, setDlTotalBytes] = useState(0)
-  const [dlIdx, setDlIdx]             = useState(0)
-  const [dlTotal, setDlTotal]         = useState(0)
-  const [dlTitle, setDlTitle]         = useState('')
-  const [downloading, setDownloading] = useState(false)
-  const cancelRef    = useRef(false)
-  const resumeRef    = useRef(null)
-  const dlProgFloor  = useRef(0)   // high-water mark — progress never goes backward within a track
+  const [playlist, setPlaylist] = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [loadErr, setLoadErr]   = useState(null)
 
-  const { playTrack, currentTrack, isPlaying, setIsPlaying, setPlaylists, upsertPlaylist } = useStore()
+  const { playTrack, currentTrack, isPlaying, setIsPlaying,
+          dl, dlRevision, startDownload, cancelDownload } = useStore()
 
-  // ── Load playlist — bulletproof null handling ─────────────────────────────
+  // Convenience — is a download active for THIS playlist?
+  const downloading  = dl.active && dl.playlistId === params?.id
+  const dlId         = downloading ? dl.trackId    : null
+  const dlProg       = downloading ? dl.prog       : 0
+  const dlWritten    = downloading ? dl.written    : 0
+  const dlTotalBytes = downloading ? dl.totalBytes : 0
+  const dlIdx        = dl.idx
+  const dlTotal      = dl.total
+  const dlTitle      = dl.title
+
+  // Track whether THIS playlist was downloading so we can show the failed alert
+  const wasDownloadingRef = useRef(false)
+
+  // ── Load playlist ─────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     if (!params?.id) { setLoadErr('No playlist ID'); setLoading(false); return }
     try {
@@ -134,134 +135,61 @@ export default function PlaylistScreen() {
     }
   }, [params?.id])
 
+  // Silent refresh — updates track list without the loading spinner
+  const silentRefresh = useCallback(async () => {
+    if (!params?.id) return
+    try {
+      const pl = await getPlaylistWithTracks(params.id)
+      if (pl) setPlaylist({ ...pl, tracks: pl.tracks || [] })
+    } catch {}
+  }, [params?.id])
+
   useEffect(() => { load() }, [load])
 
-  // ── Download all pending tracks ────────────────────────────────────────────
+  // Re-render track list whenever the store signals a DB write (thumbnail or is_downloaded updated)
+  useEffect(() => {
+    if (dl.playlistId === params?.id) silentRefresh()
+  }, [dlRevision])
+
+  // Show "X tracks failed" alert when download finishes for this playlist
+  useEffect(() => {
+    const active = dl.active && dl.playlistId === params?.id
+    if (wasDownloadingRef.current && !active && dl.failed?.length > 0) {
+      const lines = dl.failed.slice(0, 4).map(f => `• ${f.title}\n  (${f.error})`).join('\n')
+      const more  = dl.failed.length > 4 ? `\n…and ${dl.failed.length - 4} more` : ''
+      Alert.alert(
+        `${dl.failed.length} track${dl.failed.length > 1 ? 's' : ''} failed`,
+        `${lines}${more}\n\nTap Download to retry.`,
+        [{ text: 'OK' }],
+      )
+    }
+    wasDownloadingRef.current = active
+  }, [dl.active, dl.playlistId, params?.id])
+
+  // ── Download / cancel — delegated to the store so navigation doesn't kill it ─
   const handleDownload = useCallback(async () => {
     if (!playlist) return
     const pending = (playlist.tracks || []).filter(t => !t.is_downloaded)
     if (!pending.length) { Alert.alert('All done', 'Every track is already downloaded.'); return }
 
-    // Confirm for large playlists
     if (pending.length > 4) {
       const confirmed = await new Promise(resolve =>
         Alert.alert(
           'Download Playlist',
-          `Save ${pending.length} tracks to your phone?\n\nDownloads will continue even if you switch apps.`,
+          `Save ${pending.length} tracks to your phone?\n\nDownloads continue even if you switch screens.`,
           [
             { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
             { text: `Download ${pending.length} tracks`, onPress: () => resolve(true) },
-          ]
+          ],
         )
       )
       if (!confirmed) return
     }
 
-    cancelRef.current = false
-    setDownloading(true)
-    setDlTotal(pending.length)
-    const failed = []   // { title, error }
+    startDownload(playlist)
+  }, [playlist, startDownload])
 
-    for (let i = 0; i < pending.length; i++) {
-      if (cancelRef.current) break
-      const track = pending[i]
-      dlProgFloor.current = 0
-      setDlId(track.id); setDlIdx(i + 1); setDlTitle(track.title); setDlProg(0); setDlWritten(0); setDlTotalBytes(0)
-
-      // One notification per song — no mid-song updates to avoid notification spam
-      await postDownloadNotif({ title: track.title, current: i + 1, total: pending.length, pct: 0 })
-
-      try {
-        const result = await downloadTrack(
-          track,
-          playlist.id,
-          ({ pct, writtenBytes, totalBytes }) => {
-            // Clamp to high-water mark so retried downloads (pct resets to 0) never go backward
-            const safe = Math.max(pct, dlProgFloor.current)
-            dlProgFloor.current = safe
-            setDlProg(safe)
-            setDlWritten(writtenBytes || 0)
-            setDlTotalBytes(totalBytes || 0)
-          },
-          resumeRef,
-          // onMetaResolved: fires as soon as YouTube videoId+thumbnail are known,
-          // before the file download finishes — persists thumbnail early so it
-          // shows up even if the download later fails.
-          async ({ title: resolvedTitle, artist: resolvedArtist, thumbnail: resolvedThumb, duration: resolvedDur }) => {
-            try {
-              await saveTrack({
-                id: track.id,
-                playlist_id: playlist.id,
-                title:       resolvedTitle,
-                artist:      resolvedArtist,
-                thumbnail:   resolvedThumb,
-                duration:    resolvedDur,
-                file_path:   track.file_path || '',
-                is_downloaded: false,
-                position:    track.position ?? i,
-              })
-              // Update local state so thumbnail appears immediately in the list
-              setPlaylist(prev => {
-                if (!prev) return prev
-                return {
-                  ...prev,
-                  tracks: prev.tracks.map(t =>
-                    t.id === track.id
-                      ? { ...t, title: resolvedTitle, artist: resolvedArtist, thumbnail: resolvedThumb, duration: resolvedDur }
-                      : t
-                  ),
-                }
-              })
-            } catch {}
-          },
-        )
-        await saveTrack({ ...result, id: track.id, playlist_id: playlist.id, is_downloaded: true, position: track.position ?? i })
-        const fresh = await getPlaylistWithTracks(params.id)
-        if (fresh) {
-          const freshPl = { ...fresh, tracks: fresh.tracks || [] }
-          setPlaylist(freshPl)
-          const dlCount = (fresh.tracks || []).filter(t => t.is_downloaded).length
-          upsertPlaylist({ ...freshPl, downloaded_count: dlCount })
-        }
-      } catch (e) {
-        console.warn('[DL]', track.title, e?.message)
-        failed.push({ title: track.title, error: e?.message || 'Unknown error' })
-      }
-    }
-
-    setDlId(null); setDlTitle(''); setDownloading(false)
-    await clearDownloadNotif()
-
-    if (!cancelRef.current) {
-      const final = await getPlaylistWithTracks(params.id)
-      if (final) {
-        const dlCount = (final.tracks || []).filter(t => t.is_downloaded).length
-        if (dlCount > 0) await postDoneNotif(dlCount)
-        setPlaylist({ ...final, tracks: final.tracks || [] })
-        upsertPlaylist({ ...final, downloaded_count: dlCount })
-      }
-
-      if (failed.length > 0) {
-        const lines = failed.slice(0, 4).map(f => `• ${f.title}\n  (${f.error})`).join('\n')
-        const more  = failed.length > 4 ? `\n…and ${failed.length - 4} more` : ''
-        Alert.alert(
-          `${failed.length} track${failed.length > 1 ? 's' : ''} failed`,
-          `${lines}${more}\n\nTry again on Wi-Fi or tap Download to retry.`,
-          [{ text: 'OK' }]
-        )
-      }
-    }
-
-    const all = await getPlaylists()
-    setPlaylists(all || [])
-  }, [playlist, params?.id, upsertPlaylist, setPlaylists])
-
-  const handleCancel = useCallback(async () => {
-    cancelRef.current = true
-    if (resumeRef.current) { try { await resumeRef.current.cancelAsync() } catch {}; resumeRef.current = null }
-    await clearDownloadNotif()
-    setDownloading(false); setDlId(null); setDlTitle('')
-  }, [])
+  const handleCancel = useCallback(() => cancelDownload(), [cancelDownload])
 
   const handleDelete = useCallback(() => {
     Alert.alert('Delete Playlist', 'Remove this playlist and all downloaded files?', [
@@ -269,7 +197,7 @@ export default function PlaylistScreen() {
       {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
-          await handleCancel()
+          await cancelDownload()
           const filePaths = await deletePlaylistFromDb(playlist.id)
           for (const p of filePaths) {
             await FileSystem.deleteAsync(p, { idempotent: true }).catch(() => {})
@@ -279,7 +207,7 @@ export default function PlaylistScreen() {
         },
       },
     ])
-  }, [playlist, handleCancel, navigation])
+  }, [playlist, cancelDownload, navigation])
 
   // ── Loading / error states ─────────────────────────────────────────────────
   if (loading) return (
