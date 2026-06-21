@@ -2,7 +2,7 @@
   "expo": {
     "name": "OfflineBeats",
     "slug": "offlinebeats",
-    "version": "2.2.5",
+    "version": "2.2.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -32,7 +32,7 @@
         "backgroundColor": "#121212"
       },
       "package": "com.offlinebeats.app",
-      "versionCode": 16,
+      "versionCode": 17,
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.READ_MEDIA_AUDIO",
