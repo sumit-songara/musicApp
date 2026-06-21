@@ -113,8 +113,9 @@ export default function PlaylistScreen() {
   const [dlTotal, setDlTotal]         = useState(0)
   const [dlTitle, setDlTitle]         = useState('')
   const [downloading, setDownloading] = useState(false)
-  const cancelRef = useRef(false)
-  const resumeRef = useRef(null)
+  const cancelRef    = useRef(false)
+  const resumeRef    = useRef(null)
+  const dlProgFloor  = useRef(0)   // high-water mark — progress never goes backward within a track
 
   const { playTrack, currentTrack, isPlaying, setIsPlaying, setPlaylists, upsertPlaylist } = useStore()
 
@@ -164,6 +165,7 @@ export default function PlaylistScreen() {
     for (let i = 0; i < pending.length; i++) {
       if (cancelRef.current) break
       const track = pending[i]
+      dlProgFloor.current = 0
       setDlId(track.id); setDlIdx(i + 1); setDlTitle(track.title); setDlProg(0); setDlWritten(0); setDlTotalBytes(0)
 
       // One notification per song — no mid-song updates to avoid notification spam
@@ -174,8 +176,10 @@ export default function PlaylistScreen() {
           track,
           playlist.id,
           ({ pct, writtenBytes, totalBytes }) => {
-            // Update in-app UI only — no extra notifications during download
-            setDlProg(pct)
+            // Clamp to high-water mark so retried downloads (pct resets to 0) never go backward
+            const safe = Math.max(pct, dlProgFloor.current)
+            dlProgFloor.current = safe
+            setDlProg(safe)
             setDlWritten(writtenBytes || 0)
             setDlTotalBytes(totalBytes || 0)
           },

@@ -49,10 +49,7 @@ export const useStore = create((set, get) => ({
       next = queueIndex
     } else {
       next = queueIndex + 1
-      if (next >= queue.length) {
-        if (repeat === 'all') next = 0
-        else { set({ isPlaying: false }); return }
-      }
+      if (next >= queue.length) next = 0
     }
     set({ currentTrack: queue[next], queueIndex: next, isPlaying: true })
   },

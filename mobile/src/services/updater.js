@@ -2,16 +2,18 @@ import { Alert, Platform } from 'react-native'
 import * as FileSystem from 'expo-file-system'
 import * as IntentLauncher from 'expo-intent-launcher'
 import * as Notifications from 'expo-notifications'
+import Constants from 'expo-constants'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-export const APP_VERSION = '2.1.8'
+// Read from app.json at build time — single source of truth
+export const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0'
 
 const RELEASES_API =
   'https://api.github.com/repos/sumit-songara/musicApp/releases/latest'
 
-// Separate silent channel for update progress (won't interfere with song downloads)
-const UPDATE_CH = 'ob-update-v1'
+// v2: bump channel ID so Android creates it fresh with LOW (silent) importance
+const UPDATE_CH = 'ob-update-v2'
 const UPDATE_ID = 'ob-update'
 
 // ── Version comparison ────────────────────────────────────────────────────────

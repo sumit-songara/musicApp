@@ -12,9 +12,21 @@ import uuid from '../services/uuid'
 import { APP_VERSION } from '../services/updater'
 import { C, R, S } from '../theme'
 
+function extractPlaylistId(url, source) {
+  if (source === 'youtube') {
+    const m = url.match(/[?&]list=([^&#]+)/)
+    return m ? m[1] : null
+  }
+  if (source === 'spotify') {
+    const m = url.match(/playlist\/([a-zA-Z0-9]+)/)
+    return m ? m[1] : null
+  }
+  return null
+}
+
 export default function AddMusicScreen() {
   const navigation = useNavigation()
-  const { upsertPlaylist } = useStore()
+  const { upsertPlaylist, playlists } = useStore()
   const [url, setUrl]     = useState('')
   const [busy, setBusy]   = useState(false)
   const [phase, setPhase] = useState('')
@@ -22,6 +34,29 @@ export default function AddMusicScreen() {
   const submit = async () => {
     const trimmed = url.trim()
     if (!trimmed) return
+
+    // Duplicate check — extract the canonical playlist ID and compare against library
+    try {
+      const source = detectSource(trimmed)
+      const newPlId = extractPlaylistId(trimmed, source)
+      if (newPlId) {
+        const duplicate = playlists.find(p => extractPlaylistId(p.url || '', p.source || '') === newPlId)
+        if (duplicate) {
+          Alert.alert(
+            'Already in your library',
+            `"${duplicate.title || 'This playlist'}" is already saved.`,
+            [
+              { text: 'OK', style: 'cancel' },
+              { text: 'Open it', onPress: () => navigation.navigate('Playlist', { id: duplicate.id }) },
+            ],
+          )
+          return
+        }
+      }
+    } catch {
+      // detectSource throws for bad URLs — let the main flow handle it below
+    }
+
     setBusy(true)
     setPhase('Fetching playlist info…')
     try {

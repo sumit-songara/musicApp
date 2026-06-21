@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import * as SplashScreen from 'expo-splash-screen'
-import TrackPlayer, { Capability, AppKilledPlaybackBehavior } from 'react-native-track-player'
+import TrackPlayer, { Capability, AppKilledPlaybackBehavior, RepeatMode } from 'react-native-track-player'
 
 import HomeScreen     from './src/screens/HomeScreen'
 import PlaylistScreen from './src/screens/PlaylistScreen'
@@ -129,6 +129,8 @@ export default function App() {
           compactCapabilities: [Capability.SkipToPrevious, Capability.Pause, Capability.SkipToNext],
           progressUpdateEventInterval: 1,
         })
+        // Queue loops → Android always shows the Next button even on the last track
+        await TrackPlayer.setRepeatMode(RepeatMode.Queue)
       } catch (err) {
         setError(err)
       } finally {
