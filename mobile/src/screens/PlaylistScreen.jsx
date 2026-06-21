@@ -27,11 +27,14 @@ const TRACK_H   = 60
 
 // ── Animated now-playing bars ─────────────────────────────────────────────────
 import { Animated } from 'react-native'
-function NowPlayingBars() {
-  const a1 = useRef(new Animated.Value(0)).current
-  const a2 = useRef(new Animated.Value(0)).current
-  const a3 = useRef(new Animated.Value(0)).current
+// Stays mounted whenever the track is active (playing OR paused) to avoid the
+// snap-to-number glitch. Animation runs only while playing.
+function NowPlayingBars({ isPlaying }) {
+  const a1 = useRef(new Animated.Value(0.3)).current
+  const a2 = useRef(new Animated.Value(0.6)).current
+  const a3 = useRef(new Animated.Value(0.2)).current
   useEffect(() => {
+    if (!isPlaying) return
     const make = (a, d) => Animated.loop(Animated.sequence([
       Animated.timing(a, { toValue: 1, duration: 550, delay: d, useNativeDriver: false }),
       Animated.timing(a, { toValue: 0, duration: 550, useNativeDriver: false }),
@@ -39,7 +42,7 @@ function NowPlayingBars() {
     const l1 = make(a1, 0); const l2 = make(a2, 220); const l3 = make(a3, 440)
     l1.start(); l2.start(); l3.start()
     return () => { l1.stop(); l2.stop(); l3.stop() }
-  }, [])
+  }, [isPlaying])
   const bar = a => ({ width: 3, borderRadius: 2, backgroundColor: C.green, marginHorizontal: 1, height: a.interpolate({ inputRange: [0, 1], outputRange: [4, 14] }) })
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 14, width: 16 }}>
@@ -60,9 +63,9 @@ const TrackRow = memo(function TrackRow({ track, index, isActive, isPlaying, isD
     >
       {/* # / bars */}
       <View style={tr.num}>
-        {isActive && isPlaying
-          ? <NowPlayingBars />
-          : <Text style={[tr.numText, isActive && { color: C.green }]}>{index + 1}</Text>
+        {isActive
+          ? <NowPlayingBars isPlaying={isPlaying} />
+          : <Text style={tr.numText}>{index + 1}</Text>
         }
       </View>
 
