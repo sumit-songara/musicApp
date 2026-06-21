@@ -104,7 +104,6 @@ jobs:
   build-android:
     name: Android APK
     runs-on: ubuntu-latest
-    continue-on-error: true   # don't block the release if APK build fails
     steps:
       - uses: actions/checkout@v4
 
@@ -112,54 +111,36 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install mobile dependencies
         run: npm ci
         working-directory: mobile
 
-      - name: Build APK via EAS cloud
-        working-directory: mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile preview --non-interactive
+      - name: Make gradlew executable
+        run: chmod +x mobile/android/gradlew
 
-      - name: Download finished APK from EAS
-        working-directory: mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Build APK via Gradle
+        run: ./gradlew assembleDebug --no-daemon
+        working-directory: mobile/android
+
+      - name: Copy APK to releases folder
         run: |
-          mkdir -p ../releases
-          # Get the download URL of the most recent finished android build
-          APK_URL=$(eas build:list \
-            --platform android \
-            --status finished \
-            --limit 1 \
-            --json \
-            --non-interactive 2>/dev/null \
-            | python3 -c "
-          import json, sys
-          builds = json.load(sys.stdin)
-          if builds:
-              url = (builds[0].get('artifacts') or {}).get('buildUrl', '')
-              print(url)
-          " 2>/dev/null || echo "")
-
-          if [ -n "$APK_URL" ]; then
-            echo "Downloading APK from: $APK_URL"
-            curl -L "$APK_URL" -o ../releases/OfflineBeats-android.apk
-            ls -lh ../releases/OfflineBeats-android.apk
-          else
-            echo "Could not get APK URL — check expo.dev/builds manually"
-            exit 1
-          fi
+          mkdir -p releases
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk releases/OfflineBeats-android.apk
+          ls -lh releases/OfflineBeats-android.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: OfflineBeats-android
           path: releases/OfflineBeats-android.apk
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ── Create GitHub Release with all 3 files ───────────────────────────────────
   release:

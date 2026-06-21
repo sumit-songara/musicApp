@@ -39,6 +39,12 @@ export function useAudioEngine() {
 
   // Reload RNTP queue whenever the playing track changes
   useEffect(() => {
+    // Playlist was deleted — wipe RNTP so audio stops and lock-screen card disappears
+    if (!currentTrack) {
+      TrackPlayer.reset().catch(() => {})
+      rntp_ids.current = []
+      return
+    }
     if (!currentTrack?.file_path) return
     let cancelled = false
     ;(async () => {

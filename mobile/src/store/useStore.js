@@ -11,7 +11,17 @@ export const useStore = create((set, get) => ({
     next[idx] = { ...next[idx], ...pl }
     return { playlists: next }
   }),
-  removePlaylist: (id) => set(s => ({ playlists: s.playlists.filter(p => p.id !== id) })),
+  removePlaylist: (id) => set(s => {
+    const update = { playlists: s.playlists.filter(p => p.id !== id) }
+    // If the currently playing track belongs to the deleted playlist, stop playback
+    if (s.currentTrack?.playlist_id === id) {
+      update.currentTrack = null
+      update.queue        = []
+      update.queueIndex   = -1
+      update.isPlaying    = false
+    }
+    return update
+  }),
 
   // ── Player ─────────────────────────────────────────────────────────────────
   currentTrack:    null,
