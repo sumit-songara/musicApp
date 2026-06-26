@@ -69,6 +69,15 @@ export const useStore = create((set, get) => ({
     set({ currentTrack: track, queue: allTracks || [], queueIndex: idx < 0 ? 0 : idx, isPlaying: true })
   },
 
+  removeTrackFromQueue: (trackId) => set(s => {
+    const newQueue = s.queue.filter(t => t.id !== trackId)
+    if (s.currentTrack?.id === trackId) {
+      return { queue: newQueue, currentTrack: null, queueIndex: -1, isPlaying: false }
+    }
+    const newIdx = newQueue.findIndex(t => t.id === s.currentTrack?.id)
+    return { queue: newQueue, queueIndex: newIdx < 0 ? 0 : newIdx }
+  }),
+
   playNext: () => {
     const { queue, queueIndex, shuffle, repeat } = get()
     if (!queue.length) return

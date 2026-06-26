@@ -1,12 +1,18 @@
-import { useCallback, useState, memo } from 'react'
+import { useCallback, useState, useEffect, memo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, Image,
   StyleSheet, Dimensions, Platform, StatusBar,
+  TextInput, KeyboardAvoidingView,
+  Alert,
 } from 'react-native'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
+import * as FileSystem from 'expo-file-system'
 import { useStore } from '../store/useStore'
-import { getPlaylists } from '../services/db'
+import {
+  getPlaylists, deletePlaylistFromDb,
+  updatePlaylistTitle, updatePlaylistSortOrders,
+} from '../services/db'
 import { C, R, S, TAB_BAR_H, PLAYER_H } from '../theme'
 
 const { width: SW } = Dimensions.get('window')
@@ -20,16 +26,61 @@ function greeting() {
 const SRC_COLOR = { youtube: '#ff4444', spotify: C.green }
 const SRC_LABEL = { youtube: 'YouTube', spotify: 'Spotify' }
 
+// ── Rename modal (cross-platform, TextInput-based) ────────────────────────────
+function RenameOverlay({ playlist, onSave, onClose }) {
+  const [name, setName] = useState(playlist?.title ?? '')
+  const save = () => { const t = name.trim(); if (t) onSave(t) }
+  return (
+    <View style={rm.root}>
+      <View style={rm.backdrop} />
+      <KeyboardAvoidingView
+        style={rm.center}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        pointerEvents='box-none'
+      >
+        <View style={rm.sheet}>
+          <Text style={rm.title}>Rename playlist</Text>
+          <TextInput
+            style={rm.input}
+            value={name}
+            onChangeText={setName}
+            autoFocus
+            selectTextOnFocus
+            placeholder='Playlist name'
+            placeholderTextColor={C.muted}
+            returnKeyType='done'
+            onSubmitEditing={save}
+          />
+          <View style={rm.row}>
+            <TouchableOpacity style={rm.cancelBtn} onPress={onClose} activeOpacity={0.75}>
+              <Text style={rm.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={rm.saveBtn} onPress={save} activeOpacity={0.85}>
+              <Text style={rm.saveText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  )
+}
+
 // ── Playlist card ─────────────────────────────────────────────────────────────
-const PlaylistCard = memo(({ pl, onPress }) => {
-  const accent  = SRC_COLOR[pl.source] || C.green
-  const total   = pl.track_count || 0
-  const dl      = pl.downloaded_count || 0
-  const pct     = total > 0 ? dl / total : 0
+const PlaylistCard = memo(({ pl, onPress, onLongPress }) => {
+  const accent   = SRC_COLOR[pl.source] || C.green
+  const total    = pl.track_count || 0
+  const dl       = pl.downloaded_count || 0
+  const pct      = total > 0 ? dl / total : 0
   const complete = dl === total && total > 0
 
   return (
-    <TouchableOpacity style={card.wrap} onPress={onPress} activeOpacity={0.82}>
+    <TouchableOpacity
+      style={card.wrap}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
+      activeOpacity={0.82}
+    >
       {/* Album art */}
       <View style={card.artBox}>
         {pl.thumbnail
@@ -38,11 +89,9 @@ const PlaylistCard = memo(({ pl, onPress }) => {
               <Text style={{ fontSize: 32, color: C.muted }}>♫</Text>
             </View>
         }
-        {/* Source badge */}
         <View style={[card.badge, { backgroundColor: accent }]}>
           <Text style={card.badgeText}>{SRC_LABEL[pl.source] || pl.source}</Text>
         </View>
-        {/* Play button */}
         <View style={card.playBtn}>
           <Text style={card.playIcon}>▶</Text>
         </View>
@@ -52,8 +101,6 @@ const PlaylistCard = memo(({ pl, onPress }) => {
       <View style={card.info}>
         <Text style={card.title} numberOfLines={2}>{pl.title}</Text>
         <Text style={card.count}>{dl} / {total} tracks</Text>
-
-        {/* Download progress bar */}
         {total > 0 && (
           <View style={card.barBg}>
             <View style={[card.barFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: complete ? C.green : accent }]} />
@@ -67,8 +114,9 @@ const PlaylistCard = memo(({ pl, onPress }) => {
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const navigation = useNavigation()
-  const { playlists, setPlaylists } = useStore()
-  const [loading, setLoading] = useState(true)
+  const { playlists, setPlaylists, removePlaylist, dl, cancelDownload } = useStore()
+  const [loading, setLoading]   = useState(true)
+  const [renaming, setRenaming] = useState(null)   // playlist object being renamed
 
   const load = useCallback(() => {
     getPlaylists()
@@ -78,13 +126,69 @@ export default function HomeScreen() {
 
   useFocusEffect(load)
 
-  const totalDl    = playlists.reduce((s, p) => s + (p.downloaded_count || 0), 0)
+  // ── Rename ──────────────────────────────────────────────────────────────────
+  const handleRename = useCallback(async (newTitle) => {
+    if (!renaming) return
+    await updatePlaylistTitle(renaming.id, newTitle)
+    setPlaylists(playlists.map(p => p.id === renaming.id ? { ...p, title: newTitle } : p))
+    setRenaming(null)
+  }, [renaming, playlists, setPlaylists])
+
+  // ── Reorder ─────────────────────────────────────────────────────────────────
+  const movePlaylist = useCallback(async (id, dir) => {
+    const idx = playlists.findIndex(p => p.id === id)
+    const next = idx + dir
+    if (next < 0 || next >= playlists.length) return
+    const newOrder = [...playlists]
+    ;[newOrder[idx], newOrder[next]] = [newOrder[next], newOrder[idx]]
+    setPlaylists(newOrder)
+    await updatePlaylistSortOrders(newOrder.map(p => p.id))
+  }, [playlists, setPlaylists])
+
+  // ── Delete from home screen ─────────────────────────────────────────────────
+  const handleDeletePlaylist = useCallback((pl) => {
+    Alert.alert('Delete Playlist', `Remove "${pl.title}" and all downloaded files?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          if (dl.playlistId === pl.id) await cancelDownload()
+          const filePaths = await deletePlaylistFromDb(pl.id)
+          for (const p of filePaths) {
+            await FileSystem.deleteAsync(p, { idempotent: true }).catch(() => {})
+          }
+          removePlaylist(pl.id)
+        },
+      },
+    ])
+  }, [dl, cancelDownload, removePlaylist])
+
+  // ── Long-press action sheet ─────────────────────────────────────────────────
+  const handleLongPress = useCallback((pl) => {
+    const idx    = playlists.findIndex(p => p.id === pl.id)
+    const canUp  = idx > 0
+    const canDown = idx < playlists.length - 1
+
+    Alert.alert(pl.title, 'What would you like to do?', [
+      { text: '✏️  Rename',       onPress: () => setTimeout(() => setRenaming(pl), 300) },
+      canUp   ? { text: '↑  Move Up',   onPress: () => movePlaylist(pl.id, -1) } : null,
+      canDown ? { text: '↓  Move Down', onPress: () => movePlaylist(pl.id, +1) } : null,
+      { text: '🗑  Delete',       style: 'destructive', onPress: () => handleDeletePlaylist(pl) },
+      { text: 'Cancel',           style: 'cancel' },
+    ].filter(Boolean))
+  }, [playlists, movePlaylist, handleDeletePlaylist])
+
+  const totalDl     = playlists.reduce((s, p) => s + (p.downloaded_count || 0), 0)
   const totalTracks = playlists.reduce((s, p) => s + (p.track_count || 0), 0)
-  const hasPlayer  = !!useStore.getState().currentTrack
+  const hasPlayer   = !!useStore.getState().currentTrack
 
   const renderCard = useCallback(({ item }) => (
-    <PlaylistCard pl={item} onPress={() => navigation.navigate('Playlist', { id: item.id })} />
-  ), [navigation])
+    <PlaylistCard
+      pl={item}
+      onPress={() => navigation.navigate('Playlist', { id: item.id })}
+      onLongPress={() => handleLongPress(item)}
+    />
+  ), [navigation, handleLongPress])
 
   return (
     <View style={s.root}>
@@ -104,7 +208,6 @@ export default function HomeScreen() {
         renderItem={renderCard}
         ListHeaderComponent={
           <>
-            {/* Hero */}
             <LinearGradient
               colors={['#1a3a24', '#0e1f14', C.bg]}
               style={s.hero}
@@ -119,7 +222,6 @@ export default function HomeScreen() {
 
               <Text style={s.greeting}>{greeting()}</Text>
 
-              {/* Stats row */}
               {playlists.length > 0
                 ? (
                   <View style={s.statsRow}>
@@ -149,7 +251,6 @@ export default function HomeScreen() {
               }
             </LinearGradient>
 
-            {/* Section header */}
             {playlists.length > 0 && (
               <View style={s.sectionRow}>
                 <Text style={s.sectionTitle}>Your Library</Text>
@@ -163,7 +264,6 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* Empty state */}
             {!loading && playlists.length === 0 && (
               <View style={s.empty}>
                 <View style={s.emptyIcon}>
@@ -185,6 +285,14 @@ export default function HomeScreen() {
           </>
         }
       />
+
+      {renaming && (
+        <RenameOverlay
+          playlist={renaming}
+          onSave={handleRename}
+          onClose={() => setRenaming(null)}
+        />
+      )}
     </View>
   )
 }
@@ -241,4 +349,22 @@ const card = StyleSheet.create({
 
   barBg:      { height: 3, backgroundColor: C.elevated2, borderRadius: 2, overflow: 'hidden' },
   barFill:    { height: '100%', borderRadius: 2 },
+})
+
+const rm = StyleSheet.create({
+  root:    { ...StyleSheet.absoluteFillObject, zIndex: 999, elevation: 20 },
+  backdrop:{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+  center:  { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: S.lg },
+  sheet:   { width: '100%', backgroundColor: C.elevated, borderRadius: R.xl, padding: S.lg },
+  title:   { color: C.white, fontSize: 16, fontWeight: '900', marginBottom: S.md, textAlign: 'center' },
+  input:   {
+    backgroundColor: C.surface, borderRadius: R.md, paddingHorizontal: S.md,
+    paddingVertical: 12, color: C.white, fontSize: 15, borderWidth: 1,
+    borderColor: C.border, marginBottom: S.md,
+  },
+  row:        { flexDirection: 'row', gap: 10 },
+  cancelBtn:  { flex: 1, paddingVertical: 12, borderRadius: R.full, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center' },
+  cancelText: { color: C.textSub, fontWeight: '700', fontSize: 14 },
+  saveBtn:    { flex: 1, paddingVertical: 12, borderRadius: R.full, backgroundColor: C.green, alignItems: 'center' },
+  saveText:   { color: '#000', fontWeight: '900', fontSize: 14 },
 })

@@ -7,7 +7,7 @@ import { useRoute, useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system'
 import { useStore } from '../store/useStore'
-import { getPlaylistWithTracks, deletePlaylistFromDb } from '../services/db'
+import { getPlaylistWithTracks, deletePlaylistFromDb, deleteTrackFromDb } from '../services/db'
 import { C, R, S, TAB_BAR_H, PLAYER_H } from '../theme'
 
 function fmt(secs) {
@@ -54,11 +54,13 @@ function NowPlayingBars({ isPlaying }) {
 }
 
 // ── Track row — matches web TrackRow design exactly ───────────────────────────
-const TrackRow = memo(function TrackRow({ track, index, isActive, isPlaying, isDownloading, dlProgress, onPress }) {
+const TrackRow = memo(function TrackRow({ track, index, isActive, isPlaying, isDownloading, dlProgress, onPress, onLongPress }) {
   return (
     <TouchableOpacity
       style={[tr.row, isActive && tr.rowActive, !track.is_downloaded && !isDownloading && tr.rowDim]}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
       activeOpacity={track.is_downloaded ? 0.7 : 1}
     >
       {/* # / bars */}
@@ -108,7 +110,8 @@ export default function PlaylistScreen() {
   const [loadErr, setLoadErr]   = useState(null)
 
   const { playTrack, currentTrack, isPlaying, setIsPlaying,
-          dl, dlRevision, startDownload, cancelDownload } = useStore()
+          dl, dlRevision, startDownload, cancelDownload,
+          removeTrackFromQueue, upsertPlaylist } = useStore()
 
   // Convenience — is a download active for THIS playlist?
   const downloading  = dl.active && dl.playlistId === params?.id
@@ -193,6 +196,33 @@ export default function PlaylistScreen() {
   }, [playlist, startDownload])
 
   const handleCancel = useCallback(() => cancelDownload(), [cancelDownload])
+
+  const handleDeleteTrack = useCallback((track) => {
+    Alert.alert(
+      'Remove track',
+      `Remove "${track.title}" from this playlist?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove', style: 'destructive',
+          onPress: async () => {
+            const filePath = await deleteTrackFromDb(track.id)
+            if (filePath) {
+              await FileSystem.deleteAsync(filePath, { idempotent: true }).catch(() => {})
+            }
+            removeTrackFromQueue(track.id)
+            await silentRefresh()
+            // Update the store's global playlist list so the home screen card is current
+            const fresh = await getPlaylistWithTracks(params?.id)
+            if (fresh) {
+              const dlCount = (fresh.tracks || []).filter(t => t.is_downloaded).length
+              upsertPlaylist({ ...fresh, downloaded_count: dlCount })
+            }
+          },
+        },
+      ],
+    )
+  }, [removeTrackFromQueue, silentRefresh, params?.id, upsertPlaylist])
 
   const handleDelete = useCallback(() => {
     Alert.alert('Delete Playlist', 'Remove this playlist and all downloaded files?', [
@@ -371,6 +401,7 @@ export default function PlaylistScreen() {
               if (currentTrack?.id === track.id) setIsPlaying(!isPlaying)
               else playTrack(track, tracks.filter(t => t.is_downloaded))
             }}
+            onLongPress={() => handleDeleteTrack(track)}
           />
         )}
       />

@@ -38,6 +38,8 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_tracks_playlist ON tracks(playlist_id);
   `)
+  // Idempotent migration: add sort_order for user-defined playlist ordering
+  try { await db.execAsync('ALTER TABLE playlists ADD COLUMN sort_order INTEGER DEFAULT 0') } catch {}
 }
 
 export async function getSetting(key) {
@@ -98,8 +100,34 @@ export async function getPlaylists() {
     FROM playlists p
     LEFT JOIN tracks t ON t.playlist_id = p.id
     GROUP BY p.id
-    ORDER BY p.created_at DESC
+    ORDER BY p.sort_order ASC, p.created_at DESC
   `)
+}
+
+export async function updatePlaylistTitle(id, title) {
+  const db = await getDb()
+  await db.runAsync('UPDATE playlists SET title = ? WHERE id = ?', [title, id])
+}
+
+export async function updatePlaylistSortOrders(orderedIds) {
+  const db = await getDb()
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.runAsync('UPDATE playlists SET sort_order = ? WHERE id = ?', [i, orderedIds[i]])
+  }
+}
+
+export async function deleteTrackFromDb(trackId) {
+  const db = await getDb()
+  const track = await db.getFirstAsync(
+    'SELECT file_path, playlist_id FROM tracks WHERE id = ?', [trackId]
+  )
+  if (!track) return null
+  await db.runAsync('DELETE FROM tracks WHERE id = ?', [trackId])
+  await db.runAsync(
+    'UPDATE playlists SET track_count = (SELECT COUNT(*) FROM tracks WHERE playlist_id = ?) WHERE id = ?',
+    [track.playlist_id, track.playlist_id]
+  )
+  return track.file_path || null
 }
 
 export async function getPlaylistWithTracks(id) {
