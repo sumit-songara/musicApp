@@ -1,10 +1,11 @@
-import { useCallback, useState, useEffect, memo } from 'react'
+import { useCallback, useState, useEffect, useMemo, memo } from 'react'
 import {
-  View, Text, FlatList, TouchableOpacity, Image,
+  View, Text, TouchableOpacity, Image,
   StyleSheet, Dimensions, Platform, StatusBar,
   TextInput, KeyboardAvoidingView,
   Alert,
 } from 'react-native'
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system'
@@ -26,7 +27,7 @@ function greeting() {
 const SRC_COLOR = { youtube: '#ff4444', spotify: C.green }
 const SRC_LABEL = { youtube: 'YouTube', spotify: 'Spotify' }
 
-// ── Rename modal (cross-platform, TextInput-based) ────────────────────────────
+// ── Rename overlay ────────────────────────────────────────────────────────────
 function RenameOverlay({ playlist, onSave, onClose }) {
   const [name, setName] = useState(playlist?.title ?? '')
   const save = () => { const t = name.trim(); if (t) onSave(t) }
@@ -66,7 +67,7 @@ function RenameOverlay({ playlist, onSave, onClose }) {
 }
 
 // ── Playlist card ─────────────────────────────────────────────────────────────
-const PlaylistCard = memo(({ pl, onPress, onLongPress }) => {
+const PlaylistCard = memo(({ pl, onPress, drag, onMenu }) => {
   const accent   = SRC_COLOR[pl.source] || C.green
   const total    = pl.track_count || 0
   const dl       = pl.downloaded_count || 0
@@ -74,49 +75,85 @@ const PlaylistCard = memo(({ pl, onPress, onLongPress }) => {
   const complete = dl === total && total > 0
 
   return (
-    <TouchableOpacity
-      style={card.wrap}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={400}
-      activeOpacity={0.82}
-    >
-      {/* Album art */}
-      <View style={card.artBox}>
-        {pl.thumbnail
-          ? <Image source={{ uri: pl.thumbnail }} style={card.art} resizeMode='cover' />
-          : <View style={[card.art, card.artFallback]}>
-              <Text style={{ fontSize: 32, color: C.muted }}>♫</Text>
-            </View>
-        }
-        <View style={[card.badge, { backgroundColor: accent }]}>
-          <Text style={card.badgeText}>{SRC_LABEL[pl.source] || pl.source}</Text>
-        </View>
-        <View style={card.playBtn}>
-          <Text style={card.playIcon}>▶</Text>
-        </View>
-      </View>
-
-      {/* Info */}
-      <View style={card.info}>
-        <Text style={card.title} numberOfLines={2}>{pl.title}</Text>
-        <Text style={card.count}>{dl} / {total} tracks</Text>
-        {total > 0 && (
-          <View style={card.barBg}>
-            <View style={[card.barFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: complete ? C.green : accent }]} />
+    <View style={card.wrap}>
+      {/* Art area — tap or long-press */}
+      <TouchableOpacity
+        onPress={onPress}
+        onLongPress={drag}
+        delayLongPress={200}
+        activeOpacity={0.82}
+      >
+        <View style={card.artBox}>
+          {pl.thumbnail
+            ? <Image source={{ uri: pl.thumbnail }} style={card.art} resizeMode='cover' />
+            : <View style={[card.art, card.artFallback]}>
+                <Text style={{ fontSize: 32, color: C.muted }}>♫</Text>
+              </View>
+          }
+          <View style={[card.badge, { backgroundColor: accent }]}>
+            <Text style={card.badgeText}>{SRC_LABEL[pl.source] || pl.source}</Text>
           </View>
-        )}
+          <View style={card.playBtn}>
+            <Text style={card.playIcon}>▶</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Info row — title/count on left, ⋮ on right (no overlap = reliable touch on Android) */}
+      <View style={card.infoRow}>
+        <TouchableOpacity
+          style={card.infoTouch}
+          onPress={onPress}
+          onLongPress={drag}
+          delayLongPress={200}
+          activeOpacity={0.82}
+        >
+          <Text style={card.title} numberOfLines={2}>{pl.title}</Text>
+          <Text style={card.count}>{dl} / {total} tracks</Text>
+          {total > 0 && (
+            <View style={card.barBg}>
+              <View style={[card.barFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: complete ? C.green : accent }]} />
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* ⋮ menu — non-overlapping sibling */}
+        <TouchableOpacity style={card.menuBtn} onPress={onMenu} activeOpacity={0.7}>
+          <Text style={card.menuIcon}>⋮</Text>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   )
 })
+
+// ── Playlist row (two cards side-by-side, each row is one draggable unit) ────
+const PlaylistRow = memo(({ item, drag, isActive, onCardPress, onCardMenu }) => (
+  <View style={[s.colWrap, isActive && s.colWrapActive]}>
+    <PlaylistCard
+      pl={item.left}
+      onPress={() => onCardPress(item.left)}
+      drag={drag}
+      onMenu={() => onCardMenu(item.left)}
+    />
+    {item.right ? (
+      <PlaylistCard
+        pl={item.right}
+        onPress={() => onCardPress(item.right)}
+        drag={drag}
+        onMenu={() => onCardMenu(item.right)}
+      />
+    ) : (
+      <View style={{ width: CARD_W }} />
+    )}
+  </View>
+))
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const navigation = useNavigation()
   const { playlists, setPlaylists, removePlaylist, dl, cancelDownload } = useStore()
   const [loading, setLoading]   = useState(true)
-  const [renaming, setRenaming] = useState(null)   // playlist object being renamed
+  const [renaming, setRenaming] = useState(null)
 
   const load = useCallback(() => {
     getPlaylists()
@@ -126,6 +163,15 @@ export default function HomeScreen() {
 
   useFocusEffect(load)
 
+  // Pair playlists into rows for 2-column draggable grid
+  const rows = useMemo(() => {
+    const arr = []
+    for (let i = 0; i < playlists.length; i += 2) {
+      arr.push({ key: playlists[i].id, left: playlists[i], right: playlists[i + 1] || null })
+    }
+    return arr
+  }, [playlists])
+
   // ── Rename ──────────────────────────────────────────────────────────────────
   const handleRename = useCallback(async (newTitle) => {
     if (!renaming) return
@@ -134,18 +180,14 @@ export default function HomeScreen() {
     setRenaming(null)
   }, [renaming, playlists, setPlaylists])
 
-  // ── Reorder ─────────────────────────────────────────────────────────────────
-  const movePlaylist = useCallback(async (id, dir) => {
-    const idx = playlists.findIndex(p => p.id === id)
-    const next = idx + dir
-    if (next < 0 || next >= playlists.length) return
-    const newOrder = [...playlists]
-    ;[newOrder[idx], newOrder[next]] = [newOrder[next], newOrder[idx]]
+  // ── Drag reorder ─────────────────────────────────────────────────────────────
+  const handleDragEnd = useCallback(async ({ data: newRows }) => {
+    const newOrder = newRows.flatMap(r => r.right ? [r.left, r.right] : [r.left])
     setPlaylists(newOrder)
     await updatePlaylistSortOrders(newOrder.map(p => p.id))
-  }, [playlists, setPlaylists])
+  }, [setPlaylists])
 
-  // ── Delete from home screen ─────────────────────────────────────────────────
+  // ── Delete ──────────────────────────────────────────────────────────────────
   const handleDeletePlaylist = useCallback((pl) => {
     Alert.alert('Delete Playlist', `Remove "${pl.title}" and all downloaded files?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -163,127 +205,125 @@ export default function HomeScreen() {
     ])
   }, [dl, cancelDownload, removePlaylist])
 
-  // ── Long-press action sheet ─────────────────────────────────────────────────
-  const handleLongPress = useCallback((pl) => {
-    const idx    = playlists.findIndex(p => p.id === pl.id)
-    const canUp  = idx > 0
-    const canDown = idx < playlists.length - 1
-
+  // ── Card ⋮ menu (Rename / Delete) ──────────────────────────────────────────
+  const handleCardMenu = useCallback((pl) => {
     Alert.alert(pl.title, 'What would you like to do?', [
-      { text: '✏️  Rename',       onPress: () => setTimeout(() => setRenaming(pl), 300) },
-      canUp   ? { text: '↑  Move Up',   onPress: () => movePlaylist(pl.id, -1) } : null,
-      canDown ? { text: '↓  Move Down', onPress: () => movePlaylist(pl.id, +1) } : null,
-      { text: '🗑  Delete',       style: 'destructive', onPress: () => handleDeletePlaylist(pl) },
-      { text: 'Cancel',           style: 'cancel' },
-    ].filter(Boolean))
-  }, [playlists, movePlaylist, handleDeletePlaylist])
+      { text: '✏️  Rename', onPress: () => setTimeout(() => setRenaming(pl), 300) },
+      { text: '🗑  Delete', style: 'destructive', onPress: () => handleDeletePlaylist(pl) },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }, [handleDeletePlaylist])
 
   const totalDl     = playlists.reduce((s, p) => s + (p.downloaded_count || 0), 0)
   const totalTracks = playlists.reduce((s, p) => s + (p.track_count || 0), 0)
   const hasPlayer   = !!useStore.getState().currentTrack
 
-  const renderCard = useCallback(({ item }) => (
-    <PlaylistCard
-      pl={item}
-      onPress={() => navigation.navigate('Playlist', { id: item.id })}
-      onLongPress={() => handleLongPress(item)}
-    />
-  ), [navigation, handleLongPress])
+  const renderRow = useCallback(({ item, drag, isActive }) => (
+    <ScaleDecorator>
+      <PlaylistRow
+        item={item}
+        drag={drag}
+        isActive={isActive}
+        onCardPress={pl => navigation.navigate('Playlist', { id: pl.id })}
+        onCardMenu={handleCardMenu}
+      />
+    </ScaleDecorator>
+  ), [navigation, handleCardMenu])
+
+  const listHeader = (
+    <>
+      <LinearGradient
+        colors={['#1a3a24', '#0e1f14', C.bg]}
+        style={s.hero}
+        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
+      >
+        <View style={s.logoRow}>
+          <View style={s.logoCircle}>
+            <Text style={s.logoIcon}>♫</Text>
+          </View>
+          <Text style={s.appName}>OfflineBeats</Text>
+        </View>
+
+        <Text style={s.greeting}>{greeting()}</Text>
+
+        {playlists.length > 0
+          ? (
+            <View style={s.statsRow}>
+              <View style={s.statPill}>
+                <Text style={s.statNum}>{playlists.length}</Text>
+                <Text style={s.statLbl}>playlist{playlists.length !== 1 ? 's' : ''}</Text>
+              </View>
+              <View style={s.statDivider} />
+              <View style={s.statPill}>
+                <Text style={s.statNum}>{totalDl}</Text>
+                <Text style={s.statLbl}>downloaded</Text>
+              </View>
+              {totalTracks > 0 && (
+                <>
+                  <View style={s.statDivider} />
+                  <View style={s.statPill}>
+                    <Text style={s.statNum}>{totalTracks}</Text>
+                    <Text style={s.statLbl}>total tracks</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          )
+          : (
+            <Text style={s.heroSub}>Your offline music library</Text>
+          )
+        }
+      </LinearGradient>
+
+      {playlists.length > 0 && (
+        <View style={s.sectionRow}>
+          <Text style={s.sectionTitle}>Your Library</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Add Music')}
+            style={s.addBtn}
+            activeOpacity={0.75}
+          >
+            <Text style={s.addBtnText}>+ Add</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!loading && playlists.length === 0 && (
+        <View style={s.empty}>
+          <View style={s.emptyIcon}>
+            <Text style={{ fontSize: 40, color: C.green }}>♫</Text>
+          </View>
+          <Text style={s.emptyTitle}>No playlists yet</Text>
+          <Text style={s.emptyBody}>
+            Paste a YouTube or Spotify playlist URL to download everything for offline playback.
+          </Text>
+          <TouchableOpacity
+            style={s.emptyBtn}
+            onPress={() => navigation.navigate('Add Music')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.emptyBtnText}>Add your first playlist</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </>
+  )
 
   return (
     <View style={s.root}>
       <StatusBar barStyle='light-content' backgroundColor='transparent' translucent />
 
-      <FlatList
-        data={playlists}
-        keyExtractor={p => p.id}
-        numColumns={2}
-        columnWrapperStyle={s.colWrap}
+      <DraggableFlatList
+        data={rows}
+        keyExtractor={item => item.key}
+        onDragEnd={handleDragEnd}
+        renderItem={renderRow}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[s.list, { paddingBottom: TAB_BAR_H + (hasPlayer ? PLAYER_H : 0) + 24 }]}
         initialNumToRender={8}
         maxToRenderPerBatch={6}
         windowSize={5}
-        removeClippedSubviews={Platform.OS === 'android'}
-        renderItem={renderCard}
-        ListHeaderComponent={
-          <>
-            <LinearGradient
-              colors={['#1a3a24', '#0e1f14', C.bg]}
-              style={s.hero}
-              start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-            >
-              <View style={s.logoRow}>
-                <View style={s.logoCircle}>
-                  <Text style={s.logoIcon}>♫</Text>
-                </View>
-                <Text style={s.appName}>OfflineBeats</Text>
-              </View>
-
-              <Text style={s.greeting}>{greeting()}</Text>
-
-              {playlists.length > 0
-                ? (
-                  <View style={s.statsRow}>
-                    <View style={s.statPill}>
-                      <Text style={s.statNum}>{playlists.length}</Text>
-                      <Text style={s.statLbl}>playlist{playlists.length !== 1 ? 's' : ''}</Text>
-                    </View>
-                    <View style={s.statDivider} />
-                    <View style={s.statPill}>
-                      <Text style={s.statNum}>{totalDl}</Text>
-                      <Text style={s.statLbl}>downloaded</Text>
-                    </View>
-                    {totalTracks > 0 && (
-                      <>
-                        <View style={s.statDivider} />
-                        <View style={s.statPill}>
-                          <Text style={s.statNum}>{totalTracks}</Text>
-                          <Text style={s.statLbl}>total tracks</Text>
-                        </View>
-                      </>
-                    )}
-                  </View>
-                )
-                : (
-                  <Text style={s.heroSub}>Your offline music library</Text>
-                )
-              }
-            </LinearGradient>
-
-            {playlists.length > 0 && (
-              <View style={s.sectionRow}>
-                <Text style={s.sectionTitle}>Your Library</Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Add Music')}
-                  style={s.addBtn}
-                  activeOpacity={0.75}
-                >
-                  <Text style={s.addBtnText}>+ Add</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {!loading && playlists.length === 0 && (
-              <View style={s.empty}>
-                <View style={s.emptyIcon}>
-                  <Text style={{ fontSize: 40, color: C.green }}>♫</Text>
-                </View>
-                <Text style={s.emptyTitle}>No playlists yet</Text>
-                <Text style={s.emptyBody}>
-                  Paste a YouTube or Spotify playlist URL to download everything for offline playback.
-                </Text>
-                <TouchableOpacity
-                  style={s.emptyBtn}
-                  onPress={() => navigation.navigate('Add Music')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={s.emptyBtnText}>Add your first playlist</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </>
-        }
+        ListHeaderComponent={listHeader}
       />
 
       {renaming && (
@@ -299,9 +339,10 @@ export default function HomeScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: C.bg },
-  list:    {},
-  colWrap: { paddingHorizontal: S.md, gap: 12, marginBottom: 12 },
+  root:         { flex: 1, backgroundColor: C.bg },
+  list:         {},
+  colWrap:      { flexDirection: 'row', paddingHorizontal: S.md, gap: 12, marginBottom: 12 },
+  colWrapActive:{ opacity: 0.75 },
 
   hero:       { paddingHorizontal: S.md, paddingTop: 52, paddingBottom: 28 },
   logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 18 },
@@ -343,7 +384,12 @@ const card = StyleSheet.create({
   playBtn:    { position: 'absolute', bottom: 8, right: 8, width: 34, height: 34, borderRadius: 17, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 6, elevation: 4 },
   playIcon:   { fontSize: 12, color: '#000', marginLeft: 2 },
 
-  info:       { padding: 10, paddingTop: 8 },
+  // Info row: title/count take flex, ⋮ button on right — no overlap
+  infoRow:    { flexDirection: 'row', alignItems: 'flex-start', paddingBottom: 8 },
+  infoTouch:  { flex: 1, padding: 10, paddingTop: 8, paddingBottom: 0 },
+  menuBtn:    { width: 30, paddingTop: 10, paddingRight: 8, alignItems: 'center' },
+  menuIcon:   { color: C.muted, fontSize: 18, fontWeight: '900' },
+
   title:      { fontSize: 13, fontWeight: '700', color: C.white, lineHeight: 18, marginBottom: 3 },
   count:      { fontSize: 11, color: C.textSub, marginBottom: 6 },
 

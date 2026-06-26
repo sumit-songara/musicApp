@@ -1,13 +1,17 @@
 import { useEffect, useState, useCallback, useRef, memo } from 'react'
 import {
-  View, Text, FlatList, TouchableOpacity, Image, StyleSheet,
+  View, Text, TouchableOpacity, Image, StyleSheet,
   Alert, ActivityIndicator, Platform, StatusBar,
 } from 'react-native'
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system'
 import { useStore } from '../store/useStore'
-import { getPlaylistWithTracks, deletePlaylistFromDb, deleteTrackFromDb } from '../services/db'
+import {
+  getPlaylistWithTracks, deletePlaylistFromDb, deleteTrackFromDb,
+  saveTrack, updateTrackPositions,
+} from '../services/db'
 import { C, R, S, TAB_BAR_H, PLAYER_H } from '../theme'
 
 function fmt(secs) {
@@ -23,12 +27,10 @@ function fmtMB(bytes) {
 
 const SRC_COLOR = { youtube: '#ff5555', spotify: C.green }
 const SRC_LABEL = { youtube: 'YouTube Playlist', spotify: 'Spotify Playlist' }
-const TRACK_H   = 60
+const TRACK_H   = 64
 
 // ── Animated now-playing bars ─────────────────────────────────────────────────
 import { Animated } from 'react-native'
-// Stays mounted whenever the track is active (playing OR paused) to avoid the
-// snap-to-number glitch. Animation runs only while playing.
 function NowPlayingBars({ isPlaying }) {
   const a1 = useRef(new Animated.Value(0.3)).current
   const a2 = useRef(new Animated.Value(0.6)).current
@@ -53,51 +55,67 @@ function NowPlayingBars({ isPlaying }) {
   )
 }
 
-// ── Track row — matches web TrackRow design exactly ───────────────────────────
-const TrackRow = memo(function TrackRow({ track, index, isActive, isPlaying, isDownloading, dlProgress, onPress, onLongPress }) {
+// ── Track row ─────────────────────────────────────────────────────────────────
+const TrackRow = memo(function TrackRow({
+  track, index, isActive, isPlaying, isDownloading, dlProgress,
+  onPress, drag, onMenu,
+}) {
   return (
-    <TouchableOpacity
-      style={[tr.row, isActive && tr.rowActive, !track.is_downloaded && !isDownloading && tr.rowDim]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={400}
-      activeOpacity={track.is_downloaded ? 0.7 : 1}
-    >
-      {/* # / bars */}
-      <View style={tr.num}>
-        {isActive
-          ? <NowPlayingBars isPlaying={isPlaying} />
-          : <Text style={tr.numText}>{index + 1}</Text>
-        }
-      </View>
+    <View style={[tr.row, isActive && tr.rowActive, !track.is_downloaded && !isDownloading && tr.rowDim]}>
+      {/* Main tap / long-press-to-drag area */}
+      <TouchableOpacity
+        style={tr.mainTouch}
+        onPress={onPress}
+        onLongPress={drag}
+        delayLongPress={200}
+        activeOpacity={track.is_downloaded ? 0.7 : 1}
+      >
+        {/* # / bars */}
+        <View style={tr.num}>
+          {isActive
+            ? <NowPlayingBars isPlaying={isPlaying} />
+            : <Text style={tr.numText}>{index + 1}</Text>
+          }
+        </View>
 
-      {/* Thumbnail */}
-      <View style={tr.thumb}>
-        {track.thumbnail
-          ? <Image source={{ uri: track.thumbnail }} style={tr.thumbImg} resizeMode='cover' />
-          : <View style={[tr.thumbImg, tr.thumbFallback]}><Text style={{ fontSize: 12, color: C.muted }}>♫</Text></View>
-        }
-      </View>
+        {/* Thumbnail */}
+        <View style={tr.thumb}>
+          {track.thumbnail
+            ? <Image source={{ uri: track.thumbnail }} style={tr.thumbImg} resizeMode='cover' />
+            : <View style={[tr.thumbImg, tr.thumbFallback]}><Text style={{ fontSize: 12, color: C.muted }}>♫</Text></View>
+          }
+        </View>
 
-      {/* Title + artist + download bar */}
-      <View style={tr.info}>
-        <Text style={[tr.title, isActive && { color: C.green }]} numberOfLines={1}>{track.title}</Text>
-        <Text style={tr.artist} numberOfLines={1}>{track.artist}</Text>
-        {isDownloading && (
-          <View style={tr.dlBar}>
-            <View style={[tr.dlBarFill, { width: `${Math.round((dlProgress || 0) * 100)}%` }]} />
-          </View>
-        )}
-      </View>
+        {/* Title + artist + download bar */}
+        <View style={tr.info}>
+          <Text style={[tr.title, isActive && { color: C.green }]} numberOfLines={1}>{track.title}</Text>
+          <Text style={tr.artist} numberOfLines={1}>{track.artist}</Text>
+          {isDownloading && (
+            <View style={tr.dlBar}>
+              <View style={[tr.dlBarFill, { width: `${Math.round((dlProgress || 0) * 100)}%` }]} />
+            </View>
+          )}
+        </View>
 
-      {/* Duration / spinner */}
-      <View style={tr.right}>
-        {isDownloading
-          ? <ActivityIndicator size='small' color={C.green} />
-          : <Text style={tr.dur}>{track.is_downloaded ? fmt(track.duration) : '↓'}</Text>
-        }
-      </View>
-    </TouchableOpacity>
+        {/* Duration / spinner */}
+        <View style={tr.right}>
+          {isDownloading
+            ? <ActivityIndicator size='small' color={C.green} />
+            : <Text style={tr.dur}>{track.is_downloaded ? fmt(track.duration) : '↓'}</Text>
+          }
+        </View>
+      </TouchableOpacity>
+
+      {/* ⋮ menu button */}
+      <TouchableOpacity
+        style={tr.menuBtn}
+        onPress={onMenu}
+        hitSlop={{ top: 10, bottom: 10, left: 8, right: 12 }}
+        activeOpacity={0.6}
+      >
+        <Text style={tr.menuIcon}>⋮</Text>
+      </TouchableOpacity>
+    </View>
   )
 })
 
@@ -113,7 +131,6 @@ export default function PlaylistScreen() {
           dl, dlRevision, startDownload, cancelDownload,
           removeTrackFromQueue, upsertPlaylist } = useStore()
 
-  // Convenience — is a download active for THIS playlist?
   const downloading  = dl.active && dl.playlistId === params?.id
   const dlId         = downloading ? dl.trackId    : null
   const dlProg       = downloading ? dl.prog       : 0
@@ -123,10 +140,9 @@ export default function PlaylistScreen() {
   const dlTotal      = dl.total
   const dlTitle      = dl.title
 
-  // Track whether THIS playlist was downloading so we can show the failed alert
   const wasDownloadingRef = useRef(false)
 
-  // ── Load playlist ─────────────────────────────────────────────────────────
+  // ── Load / refresh ────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     if (!params?.id) { setLoadErr('No playlist ID'); setLoading(false); return }
     try {
@@ -141,7 +157,6 @@ export default function PlaylistScreen() {
     }
   }, [params?.id])
 
-  // Silent refresh — updates track list without the loading spinner
   const silentRefresh = useCallback(async () => {
     if (!params?.id) return
     try {
@@ -152,12 +167,10 @@ export default function PlaylistScreen() {
 
   useEffect(() => { load() }, [load])
 
-  // Re-render track list whenever the store signals a DB write (thumbnail or is_downloaded updated)
   useEffect(() => {
     if (dl.playlistId === params?.id) silentRefresh()
   }, [dlRevision])
 
-  // Show "X tracks failed" alert when download finishes for this playlist
   useEffect(() => {
     const active = dl.active && dl.playlistId === params?.id
     if (wasDownloadingRef.current && !active && dl.failed?.length > 0) {
@@ -172,7 +185,7 @@ export default function PlaylistScreen() {
     wasDownloadingRef.current = active
   }, [dl.active, dl.playlistId, params?.id])
 
-  // ── Download / cancel — delegated to the store so navigation doesn't kill it ─
+  // ── Download / cancel ─────────────────────────────────────────────────────
   const handleDownload = useCallback(async () => {
     if (!playlist) return
     const pending = (playlist.tracks || []).filter(t => !t.is_downloaded)
@@ -197,6 +210,7 @@ export default function PlaylistScreen() {
 
   const handleCancel = useCallback(() => cancelDownload(), [cancelDownload])
 
+  // ── Delete track ──────────────────────────────────────────────────────────
   const handleDeleteTrack = useCallback((track) => {
     Alert.alert(
       'Remove track',
@@ -212,7 +226,6 @@ export default function PlaylistScreen() {
             }
             removeTrackFromQueue(track.id)
             await silentRefresh()
-            // Update the store's global playlist list so the home screen card is current
             const fresh = await getPlaylistWithTracks(params?.id)
             if (fresh) {
               const dlCount = (fresh.tracks || []).filter(t => t.is_downloaded).length
@@ -224,6 +237,44 @@ export default function PlaylistScreen() {
     )
   }, [removeTrackFromQueue, silentRefresh, params?.id, upsertPlaylist])
 
+  // ── Re-download track ─────────────────────────────────────────────────────
+  const handleRedownload = useCallback(async (track) => {
+    try {
+      if (track.file_path) {
+        await FileSystem.deleteAsync(track.file_path, { idempotent: true }).catch(() => {})
+      }
+      await saveTrack({ ...track, is_downloaded: false, file_path: '' })
+      await silentRefresh()
+      const fresh = await getPlaylistWithTracks(params?.id)
+      if (fresh) startDownload(fresh)
+    } catch {
+      Alert.alert('Error', 'Could not start re-download.')
+    }
+  }, [params?.id, silentRefresh, startDownload])
+
+  // ── ⋮ track menu ─────────────────────────────────────────────────────────
+  const handleTrackMenu = useCallback((track) => {
+    Alert.alert(track.title, '', [
+      {
+        text: '↺  Re-download',
+        onPress: () => handleRedownload(track),
+      },
+      {
+        text: '🗑  Delete',
+        style: 'destructive',
+        onPress: () => handleDeleteTrack(track),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }, [handleDeleteTrack, handleRedownload])
+
+  // ── Drag reorder ──────────────────────────────────────────────────────────
+  const handleTrackDragEnd = useCallback(async ({ data: newTracks }) => {
+    setPlaylist(prev => ({ ...prev, tracks: newTracks }))
+    await updateTrackPositions(newTracks.map(t => t.id))
+  }, [])
+
+  // ── Delete playlist ───────────────────────────────────────────────────────
   const handleDelete = useCallback(() => {
     Alert.alert('Delete Playlist', 'Remove this playlist and all downloaded files?', [
       { text: 'Cancel', style: 'cancel' },
@@ -242,7 +293,7 @@ export default function PlaylistScreen() {
     ])
   }, [playlist, cancelDownload, navigation])
 
-  // ── Loading / error states ─────────────────────────────────────────────────
+  // ── Loading / error states ────────────────────────────────────────────────
   if (loading) return (
     <View style={s.center}>
       <ActivityIndicator size='large' color={C.green} />
@@ -265,144 +316,136 @@ export default function PlaylistScreen() {
   const pct        = total > 0 ? downloaded / total : 0
   const accentColor= SRC_COLOR[playlist.source] || C.green
 
+  const listHeader = (
+    <>
+      <LinearGradient
+        colors={[`${accentColor}33`, '#12121200']}
+        style={[s.header, { paddingTop: 72 }]}
+        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+      >
+        <View style={s.headerInner}>
+          <View style={[s.art, { shadowColor: accentColor }]}>
+            {playlist.thumbnail
+              ? <Image source={{ uri: playlist.thumbnail }} style={s.artImg} resizeMode='cover' />
+              : <View style={s.artFallback}><Text style={{ fontSize: 56 }}>🎵</Text></View>
+            }
+          </View>
+
+          <View style={s.meta}>
+            <Text style={s.sourceLabel}>{SRC_LABEL[playlist.source] || 'Playlist'}</Text>
+            <Text style={s.plTitle} numberOfLines={3}>{playlist.title}</Text>
+            <Text style={s.dlCount}>
+              {downloaded} / {total} tracks downloaded
+              {downloading && <Text style={s.dlPulse}> · downloading…</Text>}
+            </Text>
+
+            <View style={s.btns}>
+              <TouchableOpacity
+                style={[s.playBtn, downloaded === 0 && s.btnOff]}
+                disabled={downloaded === 0}
+                onPress={() => {
+                  const ready = tracks.filter(t => t.is_downloaded)
+                  if (ready.length) playTrack(ready[0], ready)
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={s.playBtnIcon}>▶</Text>
+              </TouchableOpacity>
+
+              {downloading ? (
+                <TouchableOpacity style={s.stopBtn} onPress={handleCancel} activeOpacity={0.8}>
+                  <Text style={s.stopBtnText}>Stop</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
+                  <Text style={s.deleteBtnText}>Delete</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {!downloading && pending > 0 && (
+          <TouchableOpacity style={s.dlBtn} onPress={handleDownload} activeOpacity={0.85}>
+            <Text style={s.dlBtnText}>⬇  Download {pending} track{pending !== 1 ? 's' : ''}</Text>
+          </TouchableOpacity>
+        )}
+
+        {downloading && (
+          <View style={s.dlBanner}>
+            <ActivityIndicator size='small' color={C.green} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.dlBannerTitle} numberOfLines={1}>{dlTitle || '…'}</Text>
+              <Text style={s.dlBannerSub}>
+                Track {dlIdx}/{dlTotal} · {Math.round(dlProg * 100)}%
+                {fmtMB(dlWritten) ? (
+                  `  ·  ${fmtMB(dlWritten)}${fmtMB(dlTotalBytes) ? ` / ${fmtMB(dlTotalBytes)}` : ''}`
+                ) : ''}
+              </Text>
+              <View style={s.dlBannerBar}>
+                <View style={[s.dlBannerFill, {
+                  width: `${Math.min(100, ((dlIdx - 1 + dlProg) / dlTotal) * 100)}%`
+                }]} />
+              </View>
+              <Text style={s.dlBannerHint}>Continues in background</Text>
+            </View>
+          </View>
+        )}
+      </LinearGradient>
+
+      <View style={s.progressWrap}>
+        <View style={s.progressBg}>
+          <View style={[s.progressFill, { width: `${pct * 100}%`, backgroundColor: accentColor }]} />
+        </View>
+      </View>
+
+      <View style={s.colHeader}>
+        <Text style={[s.colText, { width: 24, textAlign: 'center' }]}>#</Text>
+        <View style={{ width: 40, flexShrink: 0 }} />
+        <Text style={[s.colText, { flex: 1 }]}>TITLE</Text>
+        <Text style={[s.colText, { width: 76, textAlign: 'right' }]}>TIME</Text>
+      </View>
+    </>
+  )
+
   return (
     <View style={s.root}>
       <StatusBar barStyle='light-content' backgroundColor='transparent' translucent />
 
-      <FlatList
+      <DraggableFlatList
         data={tracks}
         keyExtractor={t => String(t.id)}
+        onDragEnd={handleTrackDragEnd}
+        renderItem={({ item: track, getIndex, drag, isActive }) => (
+          <ScaleDecorator>
+            <TrackRow
+              track={track}
+              index={getIndex() ?? 0}
+              isActive={currentTrack?.id === track.id}
+              isPlaying={isPlaying}
+              isDownloading={dlId === track.id}
+              dlProgress={dlId === track.id ? dlProg : 0}
+              drag={drag}
+              onPress={() => {
+                if (!track.is_downloaded) return
+                if (currentTrack?.id === track.id) setIsPlaying(!isPlaying)
+                else playTrack(track, tracks.filter(t => t.is_downloaded))
+              }}
+              onMenu={() => handleTrackMenu(track)}
+            />
+          </ScaleDecorator>
+        )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: TAB_BAR_H + PLAYER_H + 16 }}
-        getItemLayout={(_, idx) => ({ length: TRACK_H, offset: TRACK_H * idx, index: idx })}
         initialNumToRender={14}
         maxToRenderPerBatch={10}
         windowSize={7}
-        removeClippedSubviews={Platform.OS === 'android'}
-
-        ListHeaderComponent={
-          <>
-            {/* Gradient header — matches web PlaylistHeader */}
-            <LinearGradient
-              colors={[`${accentColor}33`, '#12121200']}
-              style={[s.header, { paddingTop: 72 }]}
-              start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-            >
-              <View style={s.headerInner}>
-                {/* Album art */}
-                <View style={[s.art, { shadowColor: accentColor }]}>
-                  {playlist.thumbnail
-                    ? <Image source={{ uri: playlist.thumbnail }} style={s.artImg} resizeMode='cover' />
-                    : <View style={s.artFallback}><Text style={{ fontSize: 56 }}>🎵</Text></View>
-                  }
-                </View>
-
-                {/* Info */}
-                <View style={s.meta}>
-                  <Text style={s.sourceLabel}>{SRC_LABEL[playlist.source] || 'Playlist'}</Text>
-                  <Text style={s.plTitle} numberOfLines={3}>{playlist.title}</Text>
-                  <Text style={s.dlCount}>
-                    {downloaded} / {total} tracks downloaded
-                    {downloading && <Text style={s.dlPulse}> · downloading…</Text>}
-                  </Text>
-
-                  {/* Buttons: play + download/stop + delete */}
-                  <View style={s.btns}>
-                    {/* Big green play button (matches web) */}
-                    <TouchableOpacity
-                      style={[s.playBtn, downloaded === 0 && s.btnOff]}
-                      disabled={downloaded === 0}
-                      onPress={() => {
-                        const ready = tracks.filter(t => t.is_downloaded)
-                        if (ready.length) playTrack(ready[0], ready)
-                      }}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.playBtnIcon}>▶</Text>
-                    </TouchableOpacity>
-
-                    {downloading ? (
-                      <TouchableOpacity style={s.stopBtn} onPress={handleCancel} activeOpacity={0.8}>
-                        <Text style={s.stopBtnText}>Stop</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity style={s.deleteBtn} onPress={handleDelete} activeOpacity={0.8}>
-                        <Text style={s.deleteBtnText}>Delete</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              {/* Download button (below art+info) */}
-              {!downloading && pending > 0 && (
-                <TouchableOpacity style={s.dlBtn} onPress={handleDownload} activeOpacity={0.85}>
-                  <Text style={s.dlBtnText}>⬇  Download {pending} track{pending !== 1 ? 's' : ''}</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Download progress banner */}
-              {downloading && (
-                <View style={s.dlBanner}>
-                  <ActivityIndicator size='small' color={C.green} style={{ marginRight: 12 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.dlBannerTitle} numberOfLines={1}>{dlTitle || '…'}</Text>
-                    <Text style={s.dlBannerSub}>
-                      Track {dlIdx}/{dlTotal} · {Math.round(dlProg * 100)}%
-                      {fmtMB(dlWritten) ? (
-                        `  ·  ${fmtMB(dlWritten)}${fmtMB(dlTotalBytes) ? ` / ${fmtMB(dlTotalBytes)}` : ''}`
-                      ) : ''}
-                    </Text>
-                    <View style={s.dlBannerBar}>
-                      <View style={[s.dlBannerFill, {
-                        width: `${Math.min(100, ((dlIdx - 1 + dlProg) / dlTotal) * 100)}%`
-                      }]} />
-                    </View>
-                    <Text style={s.dlBannerHint}>Continues in background</Text>
-                  </View>
-                </View>
-              )}
-            </LinearGradient>
-
-            {/* Progress bar below header */}
-            <View style={s.progressWrap}>
-              <View style={s.progressBg}>
-                <View style={[s.progressFill, { width: `${pct * 100}%`, backgroundColor: accentColor }]} />
-              </View>
-            </View>
-
-            {/* Column headers — matches web */}
-            <View style={s.colHeader}>
-              <Text style={[s.colText, { width: 24, textAlign: 'center' }]}>#</Text>
-              <View style={{ width: 40, flexShrink: 0 }} />
-              <Text style={[s.colText, { flex: 1 }]}>TITLE</Text>
-              <Text style={[s.colText, { width: 40, textAlign: 'right' }]}>TIME</Text>
-            </View>
-          </>
-        }
-
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={!loading && (
           <View style={s.emptyTracks}>
             <Text style={s.emptyTracksText}>No tracks yet.</Text>
             <Text style={s.emptyTracksSub}>Tap Download to save tracks to your phone.</Text>
           </View>
-        )}
-
-        renderItem={({ item: track, index }) => (
-          <TrackRow
-            track={track}
-            index={index}
-            isActive={currentTrack?.id === track.id}
-            isPlaying={isPlaying}
-            isDownloading={dlId === track.id}
-            dlProgress={dlId === track.id ? dlProg : 0}
-            onPress={() => {
-              if (!track.is_downloaded) return
-              if (currentTrack?.id === track.id) setIsPlaying(!isPlaying)
-              else playTrack(track, tracks.filter(t => t.is_downloaded))
-            }}
-            onLongPress={() => handleDeleteTrack(track)}
-          />
         )}
       />
     </View>
@@ -415,7 +458,6 @@ const s = StyleSheet.create({
   center:   { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 16, padding: S.xl },
   retryBtn: { paddingVertical: 10, paddingHorizontal: S.lg },
 
-  // Header
   header:      { paddingHorizontal: S.lg, paddingBottom: S.lg },
   headerInner: { flexDirection: 'row', alignItems: 'flex-end', gap: S.md, marginBottom: S.md },
   art:         { width: 140, height: 140, borderRadius: R.lg, overflow: 'hidden', flexShrink: 0, shadowOpacity: 0.5, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
@@ -458,19 +500,22 @@ const s = StyleSheet.create({
 })
 
 const tr = StyleSheet.create({
-  row:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S.md, height: TRACK_H, gap: S.sm, borderRadius: R.sm },
-  rowActive:{ backgroundColor: 'rgba(255,255,255,0.06)' },
-  rowDim:   { opacity: 0.4 },
-  num:      { width: 24, alignItems: 'center', flexShrink: 0 },
-  numText:  { color: C.textSub, fontSize: 13 },
-  thumb:    { width: 40, height: 40, borderRadius: R.xs, overflow: 'hidden', flexShrink: 0, backgroundColor: C.elevated },
-  thumbImg: { width: 40, height: 40 },
+  row:       { flexDirection: 'row', alignItems: 'center', height: TRACK_H, borderRadius: R.sm },
+  rowActive: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  rowDim:    { opacity: 0.4 },
+  mainTouch: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: S.md, paddingRight: 4, gap: S.sm, height: '100%' },
+  num:       { width: 24, alignItems: 'center', flexShrink: 0 },
+  numText:   { color: C.textSub, fontSize: 13 },
+  thumb:     { width: 40, height: 40, borderRadius: R.xs, overflow: 'hidden', flexShrink: 0, backgroundColor: C.elevated },
+  thumbImg:  { width: 40, height: 40 },
   thumbFallback:{ alignItems: 'center', justifyContent: 'center' },
-  info:     { flex: 1, minWidth: 0 },
-  title:    { color: C.white, fontSize: 13, fontWeight: '500', marginBottom: 2 },
-  artist:   { color: C.textSub, fontSize: 11 },
-  dlBar:    { height: 2, backgroundColor: C.elevated, borderRadius: 1, marginTop: 4, overflow: 'hidden' },
-  dlBarFill:{ height: '100%', backgroundColor: C.green, borderRadius: 1 },
-  right:    { width: 40, alignItems: 'flex-end', flexShrink: 0 },
-  dur:      { color: C.muted, fontSize: 11 },
+  info:      { flex: 1, minWidth: 0 },
+  title:     { color: C.white, fontSize: 13, fontWeight: '500', marginBottom: 2 },
+  artist:    { color: C.textSub, fontSize: 11 },
+  dlBar:     { height: 2, backgroundColor: C.elevated, borderRadius: 1, marginTop: 4, overflow: 'hidden' },
+  dlBarFill: { height: '100%', backgroundColor: C.green, borderRadius: 1 },
+  right:     { width: 36, alignItems: 'flex-end', flexShrink: 0 },
+  dur:       { color: C.muted, fontSize: 11 },
+  menuBtn:   { width: 36, height: TRACK_H, alignItems: 'center', justifyContent: 'center' },
+  menuIcon:  { color: C.muted, fontSize: 20, lineHeight: 22 },
 })

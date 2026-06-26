@@ -141,6 +141,13 @@ export async function getPlaylistWithTracks(id) {
   return { ...playlist, tracks: tracks || [] }
 }
 
+export async function updateTrackPositions(orderedIds) {
+  const db = await getDb()
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.runAsync('UPDATE tracks SET position = ? WHERE id = ?', [i, orderedIds[i]])
+  }
+}
+
 export async function deletePlaylistFromDb(id) {
   const db = await getDb()
   const tracks = await db.getAllAsync('SELECT file_path FROM tracks WHERE playlist_id = ?', [id])
