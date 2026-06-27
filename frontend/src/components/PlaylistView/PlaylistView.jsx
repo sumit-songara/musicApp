@@ -68,7 +68,10 @@ export default function PlaylistView() {
       transition={{ duration: 0.3 }}
       className='min-h-full'
     >
-      <PlaylistHeader playlist={playlist} />
+      <PlaylistHeader
+        playlist={playlist}
+        onRenamed={(title) => setPlaylist(prev => ({ ...prev, title }))}
+      />
 
       {/* Track list */}
       <div className='px-4 pb-24'>
@@ -87,7 +90,20 @@ export default function PlaylistView() {
           </p>
         ) : (
           tracks.map((track, i) => (
-            <TrackRow key={track.id} track={track} index={i} tracks={tracks} />
+            <TrackRow
+              key={track.id}
+              track={track}
+              index={i}
+              tracks={tracks}
+              onTrackDeleted={(id) => setPlaylist(prev => ({
+                ...prev,
+                tracks: prev.tracks.filter(t => t.id !== id),
+                track_count: (prev.track_count || 1) - 1,
+                downloaded_count: prev.tracks.find(t => t.id === id)?.is_downloaded
+                  ? (prev.downloaded_count || 1) - 1
+                  : (prev.downloaded_count || 0),
+              }))}
+            />
           ))
         )}
       </div>

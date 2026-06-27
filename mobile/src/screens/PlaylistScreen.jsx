@@ -4,6 +4,7 @@ import {
   Alert, ActivityIndicator, Platform, StatusBar,
 } from 'react-native'
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist'
+import ActionSheet from '../components/ActionSheet'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as FileSystem from 'expo-file-system'
@@ -141,6 +142,9 @@ export default function PlaylistScreen() {
   const dlTitle      = dl.title
 
   const wasDownloadingRef = useRef(false)
+  const [sheet, setSheet] = useState(null)
+  const showSheet = useCallback((title, options) => setSheet({ title, options }), [])
+  const hideSheet = useCallback(() => setSheet(null), [])
 
   // ── Load / refresh ────────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -254,19 +258,19 @@ export default function PlaylistScreen() {
 
   // ── ⋮ track menu ─────────────────────────────────────────────────────────
   const handleTrackMenu = useCallback((track) => {
-    Alert.alert(track.title, '', [
+    showSheet(track.title, [
       {
-        text: '↺  Re-download',
+        label: 'Re-download',
+        type: 'default',
         onPress: () => handleRedownload(track),
       },
       {
-        text: '🗑  Delete',
-        style: 'destructive',
+        label: 'Delete',
+        type: 'destructive',
         onPress: () => handleDeleteTrack(track),
       },
-      { text: 'Cancel', style: 'cancel' },
     ])
-  }, [handleDeleteTrack, handleRedownload])
+  }, [showSheet, handleDeleteTrack, handleRedownload])
 
   // ── Drag reorder ──────────────────────────────────────────────────────────
   const handleTrackDragEnd = useCallback(async ({ data: newTracks }) => {
@@ -411,6 +415,13 @@ export default function PlaylistScreen() {
   return (
     <View style={s.root}>
       <StatusBar barStyle='light-content' backgroundColor='transparent' translucent />
+
+      <ActionSheet
+        visible={!!sheet}
+        title={sheet?.title}
+        options={sheet?.options || []}
+        onClose={hideSheet}
+      />
 
       <DraggableFlatList
         data={tracks}

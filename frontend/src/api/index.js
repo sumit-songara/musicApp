@@ -20,6 +20,10 @@ export const api = {
   getPlaylist: (id) => req(`/api/playlists/${id}`),
   stopPlaylist: (id) => req(`/api/playlists/${id}/stop`, { method: 'POST' }),
   deletePlaylist: (id) => req(`/api/playlists/${id}`, { method: 'DELETE' }),
+  renamePlaylist: (id, title) => req(`/api/playlists/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
+
+  deleteTrack: (playlistId, trackId) => req(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' }),
+  redownloadTrack: (playlistId, trackId) => req(`/api/playlists/${playlistId}/tracks/${trackId}/redownload`, { method: 'POST' }),
 
   startDownload: (url) => req('/api/download', { method: 'POST', body: JSON.stringify({ url }) }),
   addSingle: (url) => req('/api/download/single', { method: 'POST', body: JSON.stringify({ url }) }),

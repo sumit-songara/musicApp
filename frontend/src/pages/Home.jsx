@@ -1,6 +1,8 @@
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
+import { api } from '../api'
 
 const GREETING = () => {
   const h = new Date().getHours()
@@ -18,8 +20,81 @@ const SOURCE_ACCENT = {
   local:   'text-blue-400',
 }
 
+function RenameModal({ playlist, onSave, onCancel }) {
+  const [name, setName] = useState(playlist.title)
+  return (
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60'
+         onClick={onCancel}>
+      <div className='bg-[#282828] rounded-2xl p-6 w-80 shadow-2xl border border-white/10'
+           onClick={(e) => e.stopPropagation()}>
+        <h3 className='text-white font-bold text-lg mb-4 text-center'>Rename playlist</h3>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') onSave(name) }}
+          autoFocus
+          className='w-full bg-[#3e3e3e] text-white rounded-lg px-4 py-2.5 text-sm
+                     border border-white/10 focus:outline-none focus:border-spotify-green mb-4'
+        />
+        <div className='flex gap-2'>
+          <button
+            onClick={onCancel}
+            className='flex-1 py-2 rounded-full border border-white/20 text-sm text-white/70
+                       hover:border-white hover:text-white transition-colors'
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(name)}
+            className='flex-1 py-2 rounded-full bg-spotify-green text-black text-sm font-bold
+                       hover:brightness-110 transition-all'
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CardMenu({ onRename, onDelete, onClose }) {
+  const ref = useRef()
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      className='absolute top-full right-0 mt-1 z-50 bg-[#282828] rounded-md shadow-xl
+                 border border-white/10 py-1 min-w-[130px]'
+    >
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRename(); onClose() }}
+        className='w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors'
+      >
+        Rename
+      </button>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); onClose() }}
+        className='w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors'
+      >
+        Delete
+      </button>
+    </div>
+  )
+}
+
 function PlaylistCard({ pl, index }) {
-  const { setQueue, setCurrentTrack, setIsPlaying } = useStore()
+  const navigate = useNavigate()
+  const { setQueue, setCurrentTrack, setIsPlaying, removePlaylist, upsertPlaylist, showToast } = useStore()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [renaming, setRenaming] = useState(false)
 
   const playAll = (e) => {
     e.preventDefault()
@@ -30,59 +105,114 @@ function PlaylistCard({ pl, index }) {
     setIsPlaying(true)
   }
 
+  const handleDelete = async () => {
+    if (!confirm(`Delete "${pl.title}" and all downloaded files?`)) return
+    try {
+      await api.deletePlaylist(pl.id)
+      removePlaylist(pl.id)
+      showToast('Playlist deleted', 'info')
+    } catch (e) {
+      showToast(e.message, 'error')
+    }
+  }
+
+  const handleRename = async (newTitle) => {
+    const trimmed = newTitle.trim()
+    if (!trimmed) return
+    try {
+      const updated = await api.renamePlaylist(pl.id, trimmed)
+      upsertPlaylist({ ...pl, title: updated.title })
+      showToast('Playlist renamed', 'info')
+    } catch (e) {
+      showToast(e.message, 'error')
+    } finally {
+      setRenaming(false)
+    }
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.35 }}
-    >
-      <Link
-        to={`/playlist/${pl.id}`}
-        className='playlist-card block bg-spotify-surface rounded-xl p-4 hover:bg-spotify-surface-2
-                   transition-all duration-200 group relative overflow-hidden cursor-pointer'
+    <>
+      {renaming && (
+        <RenameModal
+          playlist={pl}
+          onSave={handleRename}
+          onCancel={() => setRenaming(false)}
+        />
+      )}
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.06, duration: 0.35 }}
       >
-        {/* Gradient tint */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${SOURCE_GRADIENT[pl.source] || SOURCE_GRADIENT.local} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
+        <Link
+          to={`/playlist/${pl.id}`}
+          className='playlist-card block bg-spotify-surface rounded-xl p-4 hover:bg-spotify-surface-2
+                     transition-all duration-200 group relative overflow-hidden cursor-pointer'
+        >
+          {/* Gradient tint */}
+          <div className={`absolute inset-0 bg-gradient-to-br ${SOURCE_GRADIENT[pl.source] || SOURCE_GRADIENT.local} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
 
-        {/* Art */}
-        <div className='relative aspect-square rounded-lg overflow-hidden mb-4 shadow-xl bg-spotify-surface-2'>
-          {pl.thumbnail ? (
-            <img
-              src={pl.thumbnail}
-              alt={pl.title}
-              className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
-            />
-          ) : (
-            <div className='w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-spotify-surface to-spotify-elevated'>
-              🎵
-            </div>
-          )}
-          {/* Play button overlay */}
-          <button
-            onClick={playAll}
-            className='play-overlay absolute bottom-3 right-3 w-11 h-11 rounded-full
-                       bg-spotify-green flex items-center justify-center shadow-2xl
-                       hover:scale-110 active:scale-95 transition-transform btn-glow'
-          >
-            <svg width='18' height='18' viewBox='0 0 24 24' fill='black'>
-              <path d='M8 5v14l11-7z'/>
-            </svg>
-          </button>
-        </div>
-
-        <div className='relative'>
-          <p className='text-white font-bold text-sm truncate leading-tight'>{pl.title}</p>
-          <p className='text-spotify-text text-xs mt-1'>
-            <span className={SOURCE_ACCENT[pl.source]}>{pl.source}</span>
-            {' · '}
-            {pl.downloaded_count || 0} tracks
-            {pl.status === 'downloading' && (
-              <span className='ml-1 text-yellow-400 animate-pulse'>· downloading</span>
+          {/* Art */}
+          <div className='relative aspect-square rounded-lg overflow-hidden mb-4 shadow-xl bg-spotify-surface-2'>
+            {pl.thumbnail ? (
+              <img
+                src={pl.thumbnail}
+                alt={pl.title}
+                className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-500'
+              />
+            ) : (
+              <div className='w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-spotify-surface to-spotify-elevated'>
+                🎵
+              </div>
             )}
-          </p>
-        </div>
-      </Link>
-    </motion.div>
+            {/* Play button overlay */}
+            <button
+              onClick={playAll}
+              className='play-overlay absolute bottom-3 right-3 w-11 h-11 rounded-full
+                         bg-spotify-green flex items-center justify-center shadow-2xl
+                         hover:scale-110 active:scale-95 transition-transform btn-glow'
+            >
+              <svg width='18' height='18' viewBox='0 0 24 24' fill='black'>
+                <path d='M8 5v14l11-7z'/>
+              </svg>
+            </button>
+          </div>
+
+          <div className='relative flex items-start justify-between gap-1'>
+            <div className='min-w-0 flex-1'>
+              <p className='text-white font-bold text-sm truncate leading-tight'>{pl.title}</p>
+              <p className='text-spotify-text text-xs mt-1'>
+                <span className={SOURCE_ACCENT[pl.source]}>{pl.source}</span>
+                {' · '}
+                {pl.downloaded_count || 0} tracks
+                {pl.status === 'downloading' && (
+                  <span className='ml-1 text-yellow-400 animate-pulse'>· downloading</span>
+                )}
+              </p>
+            </div>
+
+            {/* ⋮ button */}
+            <div className='relative flex-shrink-0' onClick={(e) => e.preventDefault()}>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(!menuOpen) }}
+                className='w-7 h-7 flex items-center justify-center text-spotify-text hover:text-white
+                           opacity-0 group-hover:opacity-100 transition-opacity rounded'
+              >
+                ⋮
+              </button>
+              {menuOpen && (
+                <CardMenu
+                  onRename={() => setRenaming(true)}
+                  onDelete={handleDelete}
+                  onClose={() => setMenuOpen(false)}
+                />
+              )}
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+    </>
   )
 }
 

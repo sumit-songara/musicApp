@@ -1,9 +1,8 @@
-import { useCallback, useState, useEffect, useMemo, memo } from 'react'
+import { useCallback, useState, useMemo, memo } from 'react'
 import {
-  View, Text, TouchableOpacity, Image,
+  View, Text, FlatList, TouchableOpacity, Image,
   StyleSheet, Dimensions, Platform, StatusBar,
-  TextInput, KeyboardAvoidingView,
-  Alert,
+  TextInput, KeyboardAvoidingView, Alert,
 } from 'react-native'
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
@@ -14,6 +13,7 @@ import {
   getPlaylists, deletePlaylistFromDb,
   updatePlaylistTitle, updatePlaylistSortOrders,
 } from '../services/db'
+import ActionSheet from '../components/ActionSheet'
 import { C, R, S, TAB_BAR_H, PLAYER_H } from '../theme'
 
 const { width: SW } = Dimensions.get('window')
@@ -66,8 +66,8 @@ function RenameOverlay({ playlist, onSave, onClose }) {
   )
 }
 
-// ── Playlist card ─────────────────────────────────────────────────────────────
-const PlaylistCard = memo(({ pl, onPress, drag, onMenu }) => {
+// ── Playlist card (grid / 2-column view) ─────────────────────────────────────
+const PlaylistCard = memo(({ pl, onPress, onMenu }) => {
   const accent   = SRC_COLOR[pl.source] || C.green
   const total    = pl.track_count || 0
   const dl       = pl.downloaded_count || 0
@@ -76,13 +76,7 @@ const PlaylistCard = memo(({ pl, onPress, drag, onMenu }) => {
 
   return (
     <View style={card.wrap}>
-      {/* Art area — tap or long-press */}
-      <TouchableOpacity
-        onPress={onPress}
-        onLongPress={drag}
-        delayLongPress={200}
-        activeOpacity={0.82}
-      >
+      <TouchableOpacity onPress={onPress} activeOpacity={0.82}>
         <View style={card.artBox}>
           {pl.thumbnail
             ? <Image source={{ uri: pl.thumbnail }} style={card.art} resizeMode='cover' />
@@ -99,15 +93,8 @@ const PlaylistCard = memo(({ pl, onPress, drag, onMenu }) => {
         </View>
       </TouchableOpacity>
 
-      {/* Info row — title/count on left, ⋮ on right (no overlap = reliable touch on Android) */}
       <View style={card.infoRow}>
-        <TouchableOpacity
-          style={card.infoTouch}
-          onPress={onPress}
-          onLongPress={drag}
-          delayLongPress={200}
-          activeOpacity={0.82}
-        >
+        <TouchableOpacity style={card.infoTouch} onPress={onPress} activeOpacity={0.82}>
           <Text style={card.title} numberOfLines={2}>{pl.title}</Text>
           <Text style={card.count}>{dl} / {total} tracks</Text>
           {total > 0 && (
@@ -116,8 +103,6 @@ const PlaylistCard = memo(({ pl, onPress, drag, onMenu }) => {
             </View>
           )}
         </TouchableOpacity>
-
-        {/* ⋮ menu — non-overlapping sibling */}
         <TouchableOpacity style={card.menuBtn} onPress={onMenu} activeOpacity={0.7}>
           <Text style={card.menuIcon}>⋮</Text>
         </TouchableOpacity>
@@ -126,27 +111,54 @@ const PlaylistCard = memo(({ pl, onPress, drag, onMenu }) => {
   )
 })
 
-// ── Playlist row (two cards side-by-side, each row is one draggable unit) ────
-const PlaylistRow = memo(({ item, drag, isActive, onCardPress, onCardMenu }) => (
-  <View style={[s.colWrap, isActive && s.colWrapActive]}>
-    <PlaylistCard
-      pl={item.left}
-      onPress={() => onCardPress(item.left)}
-      drag={drag}
-      onMenu={() => onCardMenu(item.left)}
-    />
-    {item.right ? (
-      <PlaylistCard
-        pl={item.right}
-        onPress={() => onCardPress(item.right)}
-        drag={drag}
-        onMenu={() => onCardMenu(item.right)}
-      />
-    ) : (
-      <View style={{ width: CARD_W }} />
-    )}
-  </View>
-))
+// ── Playlist list row (list / single-column view, draggable) ─────────────────
+const PlaylistListRow = memo(({ pl, onPress, drag, onMenu }) => {
+  const accent = SRC_COLOR[pl.source] || C.green
+  const dl     = pl.downloaded_count || 0
+  const total  = pl.track_count || 0
+  const pct    = total > 0 ? dl / total : 0
+
+  return (
+    <View style={lr.row}>
+      <TouchableOpacity
+        style={lr.main}
+        onPress={onPress}
+        onLongPress={drag}
+        delayLongPress={200}
+        activeOpacity={0.75}
+      >
+        <View style={lr.thumb}>
+          {pl.thumbnail
+            ? <Image source={{ uri: pl.thumbnail }} style={lr.thumbImg} resizeMode='cover' />
+            : <View style={lr.thumbFallback}><Text style={{ fontSize: 20, color: C.muted }}>♫</Text></View>
+          }
+        </View>
+        <View style={lr.info}>
+          <Text style={lr.title} numberOfLines={1}>{pl.title}</Text>
+          <View style={lr.subRow}>
+            <View style={[lr.srcBadge, { backgroundColor: accent }]}>
+              <Text style={lr.srcText}>{SRC_LABEL[pl.source] || pl.source}</Text>
+            </View>
+            <Text style={lr.sub}>{dl} / {total} tracks</Text>
+          </View>
+          {total > 0 && (
+            <View style={lr.barBg}>
+              <View style={[lr.barFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: dl === total ? C.green : accent }]} />
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={lr.menuBtn}
+        onPress={onMenu}
+        hitSlop={{ top: 10, bottom: 10, left: 8, right: 12 }}
+        activeOpacity={0.6}
+      >
+        <Text style={lr.menuIcon}>⋮</Text>
+      </TouchableOpacity>
+    </View>
+  )
+})
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
@@ -154,6 +166,11 @@ export default function HomeScreen() {
   const { playlists, setPlaylists, removePlaylist, dl, cancelDownload } = useStore()
   const [loading, setLoading]   = useState(true)
   const [renaming, setRenaming] = useState(null)
+  const [viewMode, setViewMode] = useState('cards') // 'cards' | 'list'
+  const [sheet, setSheet]       = useState(null)    // { title, options }
+
+  const showSheet = useCallback((title, options) => setSheet({ title, options }), [])
+  const hideSheet = useCallback(() => setSheet(null), [])
 
   const load = useCallback(() => {
     getPlaylists()
@@ -163,15 +180,6 @@ export default function HomeScreen() {
 
   useFocusEffect(load)
 
-  // Pair playlists into rows for 2-column draggable grid
-  const rows = useMemo(() => {
-    const arr = []
-    for (let i = 0; i < playlists.length; i += 2) {
-      arr.push({ key: playlists[i].id, left: playlists[i], right: playlists[i + 1] || null })
-    }
-    return arr
-  }, [playlists])
-
   // ── Rename ──────────────────────────────────────────────────────────────────
   const handleRename = useCallback(async (newTitle) => {
     if (!renaming) return
@@ -180,9 +188,8 @@ export default function HomeScreen() {
     setRenaming(null)
   }, [renaming, playlists, setPlaylists])
 
-  // ── Drag reorder ─────────────────────────────────────────────────────────────
-  const handleDragEnd = useCallback(async ({ data: newRows }) => {
-    const newOrder = newRows.flatMap(r => r.right ? [r.left, r.right] : [r.left])
+  // ── Drag reorder (list view only — individual items) ─────────────────────────
+  const handleDragEnd = useCallback(async ({ data: newOrder }) => {
     setPlaylists(newOrder)
     await updatePlaylistSortOrders(newOrder.map(p => p.id))
   }, [setPlaylists])
@@ -205,31 +212,47 @@ export default function HomeScreen() {
     ])
   }, [dl, cancelDownload, removePlaylist])
 
-  // ── Card ⋮ menu (Rename / Delete) ──────────────────────────────────────────
+  // ── Card ⋮ menu ─────────────────────────────────────────────────────────────
   const handleCardMenu = useCallback((pl) => {
-    Alert.alert(pl.title, 'What would you like to do?', [
-      { text: '✏️  Rename', onPress: () => setTimeout(() => setRenaming(pl), 300) },
-      { text: '🗑  Delete', style: 'destructive', onPress: () => handleDeletePlaylist(pl) },
-      { text: 'Cancel', style: 'cancel' },
+    showSheet(pl.title, [
+      {
+        label: 'Rename',
+        type: 'default',
+        onPress: () => setTimeout(() => setRenaming(pl), 50),
+      },
+      {
+        label: 'Delete',
+        type: 'destructive',
+        onPress: () => handleDeletePlaylist(pl),
+      },
     ])
-  }, [handleDeletePlaylist])
+  }, [showSheet, handleDeletePlaylist])
 
   const totalDl     = playlists.reduce((s, p) => s + (p.downloaded_count || 0), 0)
   const totalTracks = playlists.reduce((s, p) => s + (p.track_count || 0), 0)
   const hasPlayer   = !!useStore.getState().currentTrack
 
-  const renderRow = useCallback(({ item, drag, isActive }) => (
+  // ── Render helpers ──────────────────────────────────────────────────────────
+  const renderCard = useCallback(({ item }) => (
+    <PlaylistCard
+      pl={item}
+      onPress={() => navigation.navigate('Playlist', { id: item.id })}
+      onMenu={() => handleCardMenu(item)}
+    />
+  ), [navigation, handleCardMenu])
+
+  const renderListRow = useCallback(({ item, drag, isActive }) => (
     <ScaleDecorator>
-      <PlaylistRow
-        item={item}
+      <PlaylistListRow
+        pl={item}
+        onPress={() => navigation.navigate('Playlist', { id: item.id })}
         drag={drag}
-        isActive={isActive}
-        onCardPress={pl => navigation.navigate('Playlist', { id: pl.id })}
-        onCardMenu={handleCardMenu}
+        onMenu={() => handleCardMenu(item)}
       />
     </ScaleDecorator>
   ), [navigation, handleCardMenu])
 
+  // ── Shared list header ──────────────────────────────────────────────────────
   const listHeader = (
     <>
       <LinearGradient
@@ -269,22 +292,32 @@ export default function HomeScreen() {
               )}
             </View>
           )
-          : (
-            <Text style={s.heroSub}>Your offline music library</Text>
-          )
+          : <Text style={s.heroSub}>Your offline music library</Text>
         }
       </LinearGradient>
 
       {playlists.length > 0 && (
         <View style={s.sectionRow}>
           <Text style={s.sectionTitle}>Your Library</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Add Music')}
-            style={s.addBtn}
-            activeOpacity={0.75}
-          >
-            <Text style={s.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <View style={s.sectionRight}>
+            {/* View toggle */}
+            <TouchableOpacity
+              style={[s.viewToggle, viewMode === 'list' && s.viewToggleActive]}
+              onPress={() => setViewMode(v => v === 'cards' ? 'list' : 'cards')}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.viewToggleIcon, viewMode === 'list' && s.viewToggleIconActive]}>
+                {viewMode === 'cards' ? '☰' : '⊞'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Add Music')}
+              style={s.addBtn}
+              activeOpacity={0.75}
+            >
+              <Text style={s.addBtnText}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -309,22 +342,41 @@ export default function HomeScreen() {
     </>
   )
 
+  const bottomPad = TAB_BAR_H + (hasPlayer ? PLAYER_H : 0) + 24
+
   return (
     <View style={s.root}>
       <StatusBar barStyle='light-content' backgroundColor='transparent' translucent />
 
-      <DraggableFlatList
-        data={rows}
-        keyExtractor={item => item.key}
-        onDragEnd={handleDragEnd}
-        renderItem={renderRow}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[s.list, { paddingBottom: TAB_BAR_H + (hasPlayer ? PLAYER_H : 0) + 24 }]}
-        initialNumToRender={8}
-        maxToRenderPerBatch={6}
-        windowSize={5}
-        ListHeaderComponent={listHeader}
-      />
+      {viewMode === 'cards' ? (
+        <FlatList
+          data={playlists}
+          keyExtractor={p => p.id}
+          numColumns={2}
+          columnWrapperStyle={s.colWrap}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          renderItem={renderCard}
+          ListHeaderComponent={listHeader}
+        />
+      ) : (
+        <DraggableFlatList
+          data={playlists}
+          keyExtractor={p => p.id}
+          onDragEnd={handleDragEnd}
+          renderItem={renderListRow}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
+          initialNumToRender={12}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          ListHeaderComponent={listHeader}
+        />
+      )}
 
       {renaming && (
         <RenameOverlay
@@ -333,16 +385,21 @@ export default function HomeScreen() {
           onClose={() => setRenaming(null)}
         />
       )}
+
+      <ActionSheet
+        visible={!!sheet}
+        title={sheet?.title}
+        options={sheet?.options || []}
+        onClose={hideSheet}
+      />
     </View>
   )
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: C.bg },
-  list:         {},
-  colWrap:      { flexDirection: 'row', paddingHorizontal: S.md, gap: 12, marginBottom: 12 },
-  colWrapActive:{ opacity: 0.75 },
+  root:    { flex: 1, backgroundColor: C.bg },
+  colWrap: { paddingHorizontal: S.md, gap: 12, marginBottom: 12 },
 
   hero:       { paddingHorizontal: S.md, paddingTop: 52, paddingBottom: 28 },
   logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 18 },
@@ -352,7 +409,7 @@ const s = StyleSheet.create({
   greeting:   { fontSize: 28, fontWeight: '900', color: C.white, marginBottom: 16, letterSpacing: -0.5 },
   heroSub:    { fontSize: 14, color: C.textSub },
 
-  statsRow:    { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  statsRow:    { flexDirection: 'row', alignItems: 'center' },
   statPill:    { alignItems: 'center', paddingHorizontal: 14 },
   statNum:     { fontSize: 22, fontWeight: '900', color: C.white, lineHeight: 26 },
   statLbl:     { fontSize: 11, color: C.textSub, marginTop: 1 },
@@ -360,6 +417,13 @@ const s = StyleSheet.create({
 
   sectionRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: S.md, marginTop: 4, marginBottom: 14 },
   sectionTitle:{ fontSize: 18, fontWeight: '900', color: C.white },
+  sectionRight:{ flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  viewToggle:      { width: 34, height: 34, borderRadius: R.full, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  viewToggleActive:{ backgroundColor: 'rgba(29,185,84,0.15)', borderColor: C.green },
+  viewToggleIcon:  { fontSize: 16, color: C.muted },
+  viewToggleIconActive: { color: C.green },
+
   addBtn:      { paddingHorizontal: 14, paddingVertical: 6, borderRadius: R.full, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
   addBtnText:  { fontSize: 13, fontWeight: '700', color: C.green },
 
@@ -381,10 +445,9 @@ const card = StyleSheet.create({
   badge:      { position: 'absolute', top: 7, left: 7, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   badgeText:  { fontSize: 9, fontWeight: '900', color: '#000', letterSpacing: 0.3, textTransform: 'uppercase' },
 
-  playBtn:    { position: 'absolute', bottom: 8, right: 8, width: 34, height: 34, borderRadius: 17, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 6, elevation: 4 },
+  playBtn:    { position: 'absolute', bottom: 8, right: 8, width: 34, height: 34, borderRadius: 17, backgroundColor: C.green, alignItems: 'center', justifyContent: 'center', elevation: 4 },
   playIcon:   { fontSize: 12, color: '#000', marginLeft: 2 },
 
-  // Info row: title/count take flex, ⋮ button on right — no overlap
   infoRow:    { flexDirection: 'row', alignItems: 'flex-start', paddingBottom: 8 },
   infoTouch:  { flex: 1, padding: 10, paddingTop: 8, paddingBottom: 0 },
   menuBtn:    { width: 30, paddingTop: 10, paddingRight: 8, alignItems: 'center' },
@@ -395,6 +458,24 @@ const card = StyleSheet.create({
 
   barBg:      { height: 3, backgroundColor: C.elevated2, borderRadius: 2, overflow: 'hidden' },
   barFill:    { height: '100%', borderRadius: 2 },
+})
+
+const lr = StyleSheet.create({
+  row:          { flexDirection: 'row', alignItems: 'center', paddingLeft: S.md, paddingRight: 4, height: 76, borderBottomWidth: 1, borderBottomColor: C.border },
+  main:         { flex: 1, flexDirection: 'row', alignItems: 'center', gap: S.md, height: '100%' },
+  thumb:        { width: 52, height: 52, borderRadius: R.sm, overflow: 'hidden', backgroundColor: C.elevated, flexShrink: 0 },
+  thumbImg:     { width: 52, height: 52 },
+  thumbFallback:{ width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
+  info:         { flex: 1, minWidth: 0 },
+  title:        { color: C.white, fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  subRow:       { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
+  srcBadge:     { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },
+  srcText:      { fontSize: 8, fontWeight: '900', color: '#000', letterSpacing: 0.3, textTransform: 'uppercase' },
+  sub:          { fontSize: 11, color: C.textSub },
+  barBg:        { height: 2, backgroundColor: C.elevated2, borderRadius: 1, overflow: 'hidden' },
+  barFill:      { height: '100%', borderRadius: 1 },
+  menuBtn:      { width: 36, height: 76, alignItems: 'center', justifyContent: 'center' },
+  menuIcon:     { color: C.muted, fontSize: 20, lineHeight: 22 },
 })
 
 const rm = StyleSheet.create({
