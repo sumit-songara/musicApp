@@ -1,7 +1,7 @@
 import { useEffect, useRef, memo } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
-  Modal, Dimensions, Pressable, Animated, Platform,
+  Modal, Dimensions, Animated, Platform,
 } from 'react-native'
 import Slider from '@react-native-community/slider'
 import TrackPlayer, {
@@ -301,6 +301,7 @@ export default function MiniPlayer() {
   const duration       = useStore(s => s.duration)
   const fullPlayerOpen = useStore(s => s.fullPlayerOpen)
   const setIsPlaying   = useStore(s => s.setIsPlaying)
+  const setCurrentTrack= useStore(s => s.setCurrentTrack)
   const playNext       = useStore(s => s.playNext)
   const playPrev       = useStore(s => s.playPrev)
   const setFullPlayerOpen = useStore(s => s.setFullPlayerOpen)
@@ -310,61 +311,74 @@ export default function MiniPlayer() {
 
   const pct = duration > 0 ? position / duration : 0
 
+  const handleDismiss = () => {
+    setIsPlaying(false)
+    TrackPlayer.reset().catch(() => {})
+    setCurrentTrack(null)
+  }
+
   return (
     <>
       {fullPlayerOpen && <FullPlayer seek={seek} />}
 
-      <Pressable
-        style={[mp.container, { bottom: TAB_BAR_H + insets.bottom }]}
-        onPress={() => setFullPlayerOpen(true)}
-        android_ripple={null}
-      >
-        {/* Progress line */}
-        <View style={mp.progressBar}>
-          <View style={[mp.progressFill, { width: `${pct * 100}%` }]} />
-        </View>
+      <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={() => {}}>
+        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+          <View style={[mp.container, { bottom: TAB_BAR_H + insets.bottom }]}>
+            {/* Progress line */}
+            <View style={mp.progressBar}>
+              <View style={[mp.progressFill, { width: `${pct * 100}%` }]} />
+            </View>
 
-        <View style={mp.inner}>
-          <View style={mp.left}>
-            {currentTrack.thumbnail ? (
-              <Image source={{ uri: currentTrack.thumbnail }} style={mp.art} />
-            ) : (
-              <View style={[mp.art, mp.artFallback]}><Text style={{ fontSize: 18, color: C.muted }}>♫</Text></View>
-            )}
-            <View style={mp.info}>
-              <Text style={mp.title} numberOfLines={1}>{currentTrack.title}</Text>
-              <Text style={mp.artist} numberOfLines={1}>{currentTrack.artist}</Text>
+            <View style={mp.inner}>
+              <TouchableOpacity style={mp.left} onPress={() => setFullPlayerOpen(true)} activeOpacity={0.7}>
+                {currentTrack.thumbnail ? (
+                  <Image source={{ uri: currentTrack.thumbnail }} style={mp.art} />
+                ) : (
+                  <View style={[mp.art, mp.artFallback]}><Text style={{ fontSize: 18, color: C.muted }}>♫</Text></View>
+                )}
+                <View style={mp.info}>
+                  <Text style={mp.title} numberOfLines={1}>{currentTrack.title}</Text>
+                  <Text style={mp.artist} numberOfLines={1}>{currentTrack.artist}</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={mp.controls}>
+                <TouchableOpacity
+                  onPress={() => { position > 3 ? seek(0) : playPrev() }}
+                  style={mp.ctrl} hitSlop={10} activeOpacity={0.7}
+                >
+                  <Ionicons name="play-skip-back" size={18} color={C.textSub} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setIsPlaying(!isPlaying)}
+                  style={mp.playBtn} hitSlop={6} activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={isPlaying ? 'pause' : 'play'}
+                    size={16} color="#000"
+                    style={isPlaying ? undefined : { marginLeft: 2 }}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={playNext}
+                  style={mp.ctrl} hitSlop={10} activeOpacity={0.7}
+                >
+                  <Ionicons name="play-skip-forward" size={18} color={C.textSub} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleDismiss}
+                  style={mp.closeBtn} hitSlop={10} activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={18} color={C.muted} />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-
-          <View style={mp.controls}>
-            <TouchableOpacity
-              onPress={e => { e.stopPropagation?.(); position > 3 ? seek(0) : playPrev() }}
-              style={mp.ctrl} hitSlop={10} activeOpacity={0.7}
-            >
-              <Ionicons name="play-skip-back" size={18} color={C.textSub} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={e => { e.stopPropagation?.(); setIsPlaying(!isPlaying) }}
-              style={mp.playBtn} hitSlop={6} activeOpacity={0.85}
-            >
-              <Ionicons
-                name={isPlaying ? 'pause' : 'play'}
-                size={16} color="#000"
-                style={isPlaying ? undefined : { marginLeft: 2 }}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={e => { e.stopPropagation?.(); playNext() }}
-              style={mp.ctrl} hitSlop={10} activeOpacity={0.7}
-            >
-              <Ionicons name="play-skip-forward" size={18} color={C.textSub} />
-            </TouchableOpacity>
-          </View>
         </View>
-      </Pressable>
+      </Modal>
     </>
   )
 }
@@ -378,6 +392,7 @@ const mp = StyleSheet.create({
     backgroundColor: C.player,
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)',
     elevation: 8,
+    zIndex: 999,
     shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 8, shadowOffset: { width: 0, height: -2 },
   },
   progressBar:  { height: 2, width: '100%', backgroundColor: 'rgba(255,255,255,0.1)' },
@@ -392,6 +407,7 @@ const mp = StyleSheet.create({
   controls: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 },
   ctrl:     { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
   playBtn:  { width: 40, height: 40, borderRadius: 20, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
 })
 
 const ART_SIZE = Math.min(SW - S.xl * 2, 320)
