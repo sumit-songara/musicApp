@@ -296,7 +296,6 @@ export default function App() {
             <Stack.Screen name='Home'     component={Tabs}           options={{ headerShown: false }} />
             <Stack.Screen name='Playlist' component={PlaylistScreen} options={{ title: '', headerBackTitle: 'Back' }} />
           </Stack.Navigator>
-
           <PlayerWrapper />
         </NavigationContainer>
 
