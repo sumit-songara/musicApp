@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OfflineBeats — Your music, offline, forever</title>
-  <meta name="description" content="OfflineBeats downloads your YouTube and Spotify playlists once so you can play them forever — no internet, no ads, no subscription. Free for Mac, Windows and Android." />
+  <title>OfflineBeats — An educational offline music player</title>
+  <meta name="description" content="OfflineBeats is an open-source, non-commercial learning project: an offline music player for Mac, Windows and Android, built to explore desktop and mobile app development." />
   <meta name="theme-color" content="#121212" />
-  <meta property="og:title" content="OfflineBeats — Your music, offline, forever" />
-  <meta property="og:description" content="Download YouTube & Spotify playlists once. Play them forever, with no internet. Free for Mac, Windows and Android." />
+  <meta property="og:title" content="OfflineBeats — An educational offline music player" />
+  <meta property="og:description" content="An open-source learning project: a cross-platform offline music player built with React, Electron, React Native and Python." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="icon-512.png" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -314,6 +314,19 @@
     footer a:hover { color: var(--text); }
     footer .fine { width: 100%; font-size: 12.5px; color: #5a5a5a; margin-top: 6px; }
 
+    /* ── Education banner + notices ─────────────────────── */
+    .edu-bar { background: #15241a; border-bottom: 1px solid rgba(29, 185, 84, .25); color: #cfe9d8; font-size: 13.5px; text-align: center; padding: 9px 16px; }
+    .edu-bar b { color: #fff; }
+    .notice {
+      max-width: 820px; margin: 40px auto 0; padding: 18px 22px; border-radius: 14px;
+      background: rgba(255, 196, 0, .06); border: 1px solid rgba(255, 196, 0, .28); color: #e9dcb4; font-size: 14.5px;
+    }
+    .notice b { color: #fff; }
+    .learn { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 54px; }
+    @media (max-width: 760px) { .learn { grid-template-columns: 1fr; } }
+    .learn .card h3 { font-size: 17px; }
+    .disclaimer { width: 100%; font-size: 12.5px; color: #6a6a6a; line-height: 1.7; margin-top: 10px; max-width: 900px; }
+
     /* ── Reveal on scroll ────────────────────────────────── */
     .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
     .reveal.in { opacity: 1; transform: none; }
@@ -333,16 +346,16 @@
     <symbol id="i-android" viewBox="0 0 24 24"><path fill="currentColor" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22a11.5 11.5 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></symbol>
     <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></symbol>
     <symbol id="i-dl" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></symbol>
-    <symbol id="i-yt" viewBox="0 0 24 24"><path fill="#ff0033" d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8z"/><path fill="#fff" d="m9.8 15.1 5.8-3.1-5.8-3.1z"/></symbol>
-    <symbol id="i-sp" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11.5" fill="#1db954"/><path fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" d="M6.5 9.3c3.8-1.1 8-.8 11.2 1.1M7.2 12.6c3.1-.9 6.4-.6 9.1 1M7.9 15.7c2.4-.6 4.9-.4 6.9.8"/></symbol>
   </svg>
+
+  <div class="edu-bar"><b>Educational project.</b> OfflineBeats is a non-commercial learning project. Use it only with content you own or have permission to download.</div>
 
   <nav>
     <div class="wrap">
       <a class="brand" href="#top"><img src="icon.svg" alt="" />OfflineBeats</a>
       <div class="nav-links">
         <a href="#features">Features</a>
-        <a href="#how">How it works</a>
+        <a href="#learn">What I learned</a>
         <a href="#faq">FAQ</a>
         <a href="https://github.com/sumit-songara/musicApp" target="_blank" rel="noopener">GitHub</a>
         <a class="nav-cta" href="#download">Download</a>
@@ -352,18 +365,18 @@
 
   <header class="hero" id="top">
     <div class="wrap hero-inner">
-      <span class="pill"><b id="ver-pill">NEW</b> <span id="ver-text">Free for Mac, Windows &amp; Android</span></span>
-      <h1>Your music.<br /><span class="grad">Offline. Forever.</span></h1>
-      <p class="sub">Paste a YouTube or Spotify playlist link and OfflineBeats downloads every song. After that it plays anywhere, with no internet, no ads and no subscription.</p>
+      <span class="pill"><b id="ver-pill">NEW</b> <span id="ver-text">Open-source learning project</span></span>
+      <h1>A music player,<br /><span class="grad">built to learn.</span></h1>
+      <p class="sub">OfflineBeats is a student project that explores how a real cross-platform app is built. It's an offline music player for your own library, running on Mac, Windows and Android.</p>
       <div class="hero-ctas">
         <a class="btn btn-primary" id="hero-dl" href="#download">
-          <svg><use href="#i-dl" /></svg><span id="hero-dl-label">Download free</span>
+          <svg><use href="#i-dl" /></svg><span id="hero-dl-label">Try the app</span>
         </a>
         <a class="btn btn-ghost" href="https://github.com/sumit-songara/musicApp" target="_blank" rel="noopener">
           <svg><use href="#i-github" /></svg>View source
         </a>
       </div>
-      <p class="hero-meta" id="hero-meta">Open source · MIT licensed · <a href="#download">All platforms</a></p>
+      <p class="hero-meta" id="hero-meta">For education only · Open source · <a href="#download">All platforms</a></p>
 
       <!-- Product mockup -->
       <div class="stage reveal" aria-hidden="true">
@@ -376,8 +389,8 @@
               <div class="nav">Your Library</div>
               <hr />
               <div class="label">PLAYLISTS</div>
-              <div class="pl on"><div class="art" style="background:linear-gradient(135deg,#1ed760,#0d6b30)"></div><div><b>Road Trip Mix</b><small>spotify · 24</small></div></div>
-              <div class="pl"><div class="art" style="background:linear-gradient(135deg,#ff6b6b,#7a1010)"></div><div><b>Late Night Lo-fi</b><small>youtube · 41</small></div></div>
+              <div class="pl on"><div class="art" style="background:linear-gradient(135deg,#1ed760,#0d6b30)"></div><div><b>Road Trip Mix</b><small>24 songs</small></div></div>
+              <div class="pl"><div class="art" style="background:linear-gradient(135deg,#ff6b6b,#7a1010)"></div><div><b>Late Night Lo-fi</b><small>41 songs</small></div></div>
               <div class="pl"><div class="art" style="background:linear-gradient(135deg,#a78bfa,#4c1d95)"></div><div><b>Liked Songs</b><small>12 songs</small></div></div>
               <div class="pl"><div class="art" style="background:linear-gradient(135deg,#60a5fa,#1e3a8a)"></div><div><b>~/Music</b><small>local · 318</small></div></div>
             </aside>
@@ -385,7 +398,7 @@
               <div class="ph">
                 <div class="cover">🚗</div>
                 <div>
-                  <small>SPOTIFY PLAYLIST</small>
+                  <small>PLAYLIST</small>
                   <h3>Road Trip Mix</h3>
                   <p>24 / 24 tracks downloaded · <em>available offline</em></p>
                 </div>
@@ -430,35 +443,33 @@
 
   <div class="sources">
     <div class="wrap">
-      <span>Works with</span>
-      <span class="src"><svg><use href="#i-yt" /></svg>YouTube</span>
-      <span class="src"><svg><use href="#i-sp" /></svg>Spotify</span>
-      <span class="src"><svg viewBox="0 0 24 24" fill="none" stroke="#4f8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Your own music files</span>
+      <span>Plays</span>
+      <span class="src">MP3</span><span class="src">FLAC</span><span class="src">M4A</span><span class="src">AAC</span><span class="src">WAV</span><span class="src">OGG</span>
     </div>
   </div>
 
   <section id="features">
     <div class="wrap center">
       <span class="eyebrow reveal">Features</span>
-      <h2 class="title reveal">Everything you need, nothing you don't</h2>
-      <p class="lede reveal">A clean, Spotify-style player for the music you already love. It runs on your own devices and works without an account.</p>
+      <h2 class="title reveal">What the app does</h2>
+      <p class="lede reveal">A clean, modern player for music you already own. It runs entirely on your own devices and doesn't need an account.</p>
     </div>
     <div class="wrap">
       <div class="grid">
         <div class="card reveal">
-          <div class="ic" style="background:rgba(255,78,69,.12);color:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
-          <h3>YouTube playlists</h3>
-          <p>Paste any public playlist link and every track downloads as a 192&nbsp;kbps MP3, with titles and cover art.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9.5c4.5-1.3 9.5-1 13.3 1.3M6 13.4c3.6-1 7.6-.7 10.7 1.2M7 17c2.8-.7 5.8-.5 8.2.9"/></svg></div>
-          <h3>Spotify playlists</h3>
-          <p>OfflineBeats finds each Spotify track on YouTube Music and saves it for you. You don't need a Spotify account or Premium.</p>
-        </div>
-        <div class="card reveal">
           <div class="ic" style="background:rgba(79,140,255,.12);color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
           <h3>Your local library</h3>
           <p>Point it at any folder of MP3, FLAC, M4A, WAV or OGG files and they're ready to play in seconds. Your original files are never moved or changed.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg></div>
+          <h3>Save media you have rights to</h3>
+          <p>Save your own uploads, Creative Commons tracks or public-domain recordings from a public link for offline listening. It's built on the open-source yt-dlp project.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic" style="background:rgba(255,78,69,.12);color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></div>
+          <h3>Playlists &amp; organisation</h3>
+          <p>Group songs into playlists, rename them and reorder by drag and drop. There's also a Liked Songs collection for your favourites.</p>
         </div>
         <div class="card wide reveal">
           <div class="viz" aria-hidden="true">
@@ -467,13 +478,13 @@
           <div>
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2-1.5M1.4 9a15 15 0 0 1 4.2-2.7M22.6 9A15 15 0 0 0 10.7 5M12 20h.01"/></svg></div>
             <h3>Truly offline</h3>
-            <p>Once a song is downloaded it's a file on your device, so it plays on a plane, on the subway or anywhere else with no signal, for as long as you keep it. There's a live audio visualizer, plus shuffle and repeat.</p>
+            <p>Your library is stored as files on your device, so it plays on a plane, on the subway or anywhere else with no signal. There's a live audio visualizer, plus shuffle and repeat.</p>
           </div>
         </div>
         <div class="card reveal">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
           <h3>Native Android app</h3>
-          <p>The Android app downloads straight to your phone and has lock-screen controls, background playback and drag-and-drop playlist ordering.</p>
+          <p>A React Native app with lock-screen controls, background playback and drag-and-drop playlist ordering.</p>
         </div>
         <div class="card reveal">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM20 14v.01M14 20v.01M17 17h4v4h-4"/></svg></div>
@@ -497,21 +508,49 @@
   <section id="how" style="padding-top:20px">
     <div class="wrap center">
       <span class="eyebrow reveal">How it works</span>
-      <h2 class="title reveal">From link to offline in three steps</h2>
+      <h2 class="title reveal">Up and running in three steps</h2>
     </div>
     <div class="wrap">
       <div class="steps">
         <div class="step reveal">
           <h3>Install OfflineBeats</h3>
-          <p>Download the app for your Mac, Windows PC or Android phone below. Everything it needs comes in the installer, so there's nothing else to set up.</p>
+          <p>Get the app for your Mac, Windows PC or Android phone below. Everything it needs comes in the installer, so there's nothing else to set up.</p>
         </div>
         <div class="step reveal">
-          <h3>Paste a playlist link</h3>
-          <p>Click <b>+</b> and paste a link like <code>youtube.com/playlist?list=…</code> or <code>open.spotify.com/playlist/…</code>. A single song works too.</p>
+          <h3>Add your music</h3>
+          <p>Click <b>+</b> and choose a folder like <code>~/Music</code>, or paste a public link to media you have permission to save.</p>
         </div>
         <div class="step reveal">
           <h3>Press play, anywhere</h3>
-          <p>Tracks appear as they finish downloading. After that you can turn off WiFi and your music keeps playing.</p>
+          <p>Your library is ready to play straight away. Turn off WiFi and it keeps playing.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="learn" style="padding-top:20px">
+    <div class="wrap center">
+      <span class="eyebrow reveal">About this project</span>
+      <h2 class="title reveal">What I learned building it</h2>
+      <p class="lede reveal">I built OfflineBeats to learn how a real app goes from idea to installer on three platforms. These were the most interesting problems along the way.</p>
+    </div>
+    <div class="wrap">
+      <div class="learn">
+        <div class="card reveal">
+          <h3>Shipping a Python backend inside a desktop app</h3>
+          <p>Electron starts a bundled Python and Flask server, waits until it's healthy, and restarts it if it crashes. Everything ships in one installer, with no setup for the user.</p>
+        </div>
+        <div class="card reveal">
+          <h3>Audio that behaves like a real player</h3>
+          <p>One shared audio element, HTTP Range requests for instant seeking, a Web Audio API visualizer, and background playback with lock-screen controls on Android.</p>
+        </div>
+        <div class="card reveal">
+          <h3>Live progress for long-running jobs</h3>
+          <p>Background worker threads stream progress to the UI with Server-Sent Events. Jobs can be cancelled cleanly without leaving half-written files behind.</p>
+        </div>
+        <div class="card reveal">
+          <h3>One push, three platforms</h3>
+          <p>Tagging a version makes GitHub Actions build a Mac DMG, a Windows installer and an Android APK in parallel, publish a release, and tell existing users that an update is ready.</p>
         </div>
       </div>
     </div>
@@ -520,8 +559,11 @@
   <section id="download">
     <div class="wrap center">
       <span class="eyebrow reveal">Download</span>
-      <h2 class="title reveal">Get OfflineBeats free</h2>
-      <p class="lede reveal" id="dl-lede">Pick your platform. Every download is the latest release, built straight from the open-source code on GitHub.</p>
+      <h2 class="title reveal">Try OfflineBeats</h2>
+      <p class="lede reveal" id="dl-lede">Every build is the latest release, made straight from the open-source code on GitHub.</p>
+      <div class="notice reveal">
+        <b>Please read before downloading.</b> OfflineBeats is shared for <b>educational and personal, non-commercial use only</b>. Only use it with music you own or content you have explicit permission to download, such as your own uploads, Creative Commons or public-domain works. Downloading copyrighted material without permission may break copyright law and the terms of service of the website it comes from. By downloading, you agree that you're responsible for how you use it.
+      </div>
     </div>
     <div class="wrap">
       <div class="dl-grid">
@@ -591,9 +633,9 @@
     <div class="wrap center">
       <span class="eyebrow reveal">Under the hood</span>
       <h2 class="title reveal">Built with</h2>
-      <p class="lede reveal">One codebase each for desktop and mobile, and a small local server that does the downloading.</p>
+      <p class="lede reveal">One codebase each for desktop and mobile, plus a small local Python server. The full source is on GitHub to read and learn from.</p>
       <div class="tech reveal">
-        <span>React 18</span><span>Electron</span><span>React Native · Expo</span><span>Python · Flask</span><span>yt-dlp</span><span>spotDL</span><span>SQLite</span><span>Tailwind CSS</span><span>Framer Motion</span><span>Zustand</span><span>Web Audio API</span><span>GitHub Actions</span>
+        <span>React 18</span><span>Electron</span><span>React Native · Expo</span><span>Python · Flask</span><span>yt-dlp</span><span>SQLite</span><span>Tailwind CSS</span><span>Framer Motion</span><span>Zustand</span><span>Web Audio API</span><span>GitHub Actions</span>
       </div>
     </div>
   </section>
@@ -606,16 +648,16 @@
     <div class="wrap">
       <div class="faq">
         <details class="reveal">
-          <summary>Is OfflineBeats really free?</summary>
-          <p>Yes. There are no ads, no subscription and no in-app purchases. It's open source under the MIT license.</p>
+          <summary>Is this a commercial product?</summary>
+          <p>No. OfflineBeats is a personal learning project, shared as open source under the MIT license for educational purposes. It has no ads or payments, and it isn't monetised in any way.</p>
         </details>
         <details class="reveal">
-          <summary>Do I need a Spotify or YouTube account?</summary>
-          <p>No. Public playlists work without signing in to anything. For Spotify playlists, OfflineBeats only reads the track list and then downloads each song from YouTube Music.</p>
+          <summary>What content can I use it with?</summary>
+          <p>Music files you already own, plus media you have explicit permission to save: your own uploads, Creative Commons works and public-domain recordings. Don't use it to download copyrighted material without the rights holder's permission.</p>
         </details>
         <details class="reveal">
-          <summary>Where are my songs stored?</summary>
-          <p>On a Mac or PC, downloads go to <b>Music/OfflineBeats</b> in your home folder as normal MP3 files you can use anywhere. On Android, they're saved inside the app's own storage on your phone.</p>
+          <summary>Where is my library stored?</summary>
+          <p>On a Mac or PC, saved files go to <b>Music/OfflineBeats</b> in your home folder. On Android, they're kept inside the app's own storage on your phone. Nothing is uploaded anywhere.</p>
         </details>
         <details class="reveal">
           <summary>Why does my computer warn me when I open it?</summary>
@@ -627,7 +669,7 @@
         </details>
         <details class="reveal">
           <summary>Is downloading music legal?</summary>
-          <p>OfflineBeats is a tool for personal, offline listening. Please only download content you have the right to, and respect the terms of the services you use and the artists who make the music.</p>
+          <p>It depends on what you download and where you live. Downloading copyrighted music without permission is illegal in many countries, and it's usually against the terms of service of the website it comes from. OfflineBeats doesn't host or provide any music. You're responsible for making sure your use is legal. When in doubt, don't download it, and support artists through official channels.</p>
         </details>
       </div>
     </div>
@@ -635,9 +677,9 @@
 
   <div class="final-wrap">
     <div class="final reveal">
-      <h2>Take your music off the grid.</h2>
-      <p>Download once and listen forever, on every device you own.</p>
-      <a class="btn btn-dark" href="#download"><svg><use href="#i-dl" /></svg>Download OfflineBeats</a>
+      <h2>Read the code. Learn from it.</h2>
+      <p>The whole project is open source: desktop, mobile, backend and CI.</p>
+      <a class="btn btn-dark" href="https://github.com/sumit-songara/musicApp" target="_blank" rel="noopener"><svg><use href="#i-github" /></svg>View on GitHub</a>
     </div>
   </div>
 
@@ -649,7 +691,8 @@
         <a href="https://github.com/sumit-songara/musicApp/releases" target="_blank" rel="noopener">Releases</a>
         <a href="https://github.com/sumit-songara/musicApp/issues" target="_blank" rel="noopener">Report a bug</a>
       </div>
-      <p class="fine">Built by Sumit Songara · MIT License · Not affiliated with YouTube, Google or Spotify.</p>
+      <p class="fine">Built by Sumit Songara as a learning project · MIT License</p>
+      <p class="disclaimer"><b>Disclaimer:</b> OfflineBeats is provided for educational purposes only, "as is", without warranty of any kind. It doesn't host, store or distribute any copyrighted content. Users are solely responsible for making sure their use complies with copyright law and the terms of service of any website they access. The author doesn't condone piracy and isn't liable for any misuse. OfflineBeats isn't affiliated with, endorsed by or sponsored by YouTube, Google, Spotify or any other service. All trademarks belong to their respective owners. If you're a rights holder with a concern, please <a href="https://github.com/sumit-songara/musicApp/issues" target="_blank" rel="noopener" style="text-decoration:underline">open an issue on GitHub</a>.</p>
     </div>
   </footer>
 
@@ -665,16 +708,13 @@
         : /Mac/i.test(plat) || /Macintosh/i.test(ua) ? 'mac'
         : null
 
-      var labels = { mac: 'Download for Mac', windows: 'Download for Windows', android: 'Download for Android' }
+      var labels = { mac: 'Try it on Mac', windows: 'Try it on Windows', android: 'Try it on Android' }
       var card = os && document.querySelector('.dl[data-os="' + os + '"]')
       if (card) {
         card.classList.add('rec')
-        var direct = card.querySelector('a[data-asset]')
-        var hero = document.getElementById('hero-dl')
-        hero.href = direct.href
         document.getElementById('hero-dl-label').textContent = labels[os]
         document.getElementById('hero-meta').innerHTML =
-          'Free · Open source · <a href="#download">Other platforms</a>'
+          'For education only · Open source · <a href="#download">Other platforms</a>'
       }
       if (os === 'ios') document.getElementById('ios-note').classList.add('show')
 
