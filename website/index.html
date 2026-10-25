@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OfflineBeats — Your music, offline, forever</title>
+  <meta name="description" content="OfflineBeats downloads your YouTube and Spotify playlists once so you can play them forever — no internet, no ads, no subscription. Free for Mac, Windows and Android." />
+  <meta name="theme-color" content="#121212" />
+  <meta property="og:title" content="OfflineBeats — Your music, offline, forever" />
+  <meta property="og:description" content="Download YouTube & Spotify playlists once. Play them forever, with no internet. Free for Mac, Windows and Android." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="icon-512.png" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --bg-2: #121212;
+      --surface: #181818;
+      --surface-2: #222;
+      --line: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-2: #b3b3b3;
+      --muted: #727272;
+      --green: #1db954;
+      --green-2: #1ed760;
+      --red: #ff4e45;
+      --blue: #4f8cff;
+      --radius: 16px;
+      --max: 1160px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; }
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+    .eyebrow {
+      display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--green);
+    }
+    h2.title { font-size: clamp(30px, 4.4vw, 46px); font-weight: 900; letter-spacing: -.03em; line-height: 1.1; margin: 10px 0 14px; }
+    p.lede { color: var(--text-2); font-size: 18px; max-width: 620px; }
+    section { padding: 110px 0; }
+    .center { text-align: center; }
+    .center p.lede { margin: 0 auto; }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: saturate(160%) blur(14px);
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+      background: rgba(11, 11, 11, .72);
+      border-bottom: 1px solid var(--line);
+    }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 18px; letter-spacing: -.02em; }
+    .brand img { width: 30px; height: 30px; }
+    .nav-links { display: flex; align-items: center; gap: 28px; font-size: 14px; font-weight: 600; color: var(--text-2); }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--text); color: #000 !important; padding: 8px 16px; border-radius: 999px;
+      transition: transform .15s;
+    }
+    .nav-cta:hover { transform: scale(1.04); }
+    @media (max-width: 760px) { .nav-links a:not(.nav-cta) { display: none; } }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px;
+      padding: 14px 24px; border-radius: 999px; transition: transform .15s, background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: scale(1.04); }
+    .btn:active { transform: scale(.98); }
+    .btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .btn-primary { background: var(--green); color: #000; box-shadow: 0 10px 40px -10px rgba(29, 185, 84, .6); }
+    .btn-primary:hover { background: var(--green-2); }
+    .btn-ghost { border: 1px solid rgba(255, 255, 255, .22); color: var(--text); }
+    .btn-ghost:hover { border-color: #fff; }
+
+    /* ── Hero ────────────────────────────────────────────── */
+    .hero { position: relative; padding: 90px 0 40px; overflow: hidden; }
+    .hero::before {
+      content: ""; position: absolute; inset: -20% -10% auto; height: 760px; z-index: -1;
+      background:
+        radial-gradient(600px 380px at 20% 20%, rgba(29, 185, 84, .28), transparent 70%),
+        radial-gradient(520px 340px at 85% 10%, rgba(79, 140, 255, .14), transparent 70%),
+        radial-gradient(500px 300px at 60% 60%, rgba(255, 78, 69, .08), transparent 70%);
+    }
+    .hero-inner { text-align: center; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px;
+      background: rgba(255, 255, 255, .06); border: 1px solid var(--line); font-size: 13px; color: var(--text-2);
+      font-weight: 500;
+    }
+    .pill b { background: var(--green); color: #000; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+    .hero h1 {
+      font-size: clamp(42px, 7.4vw, 84px); font-weight: 900; letter-spacing: -.045em; line-height: 1.02;
+      margin: 22px auto 20px; max-width: 900px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(90deg, var(--green-2), #7cf0a8 50%, var(--green));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p.sub { color: var(--text-2); font-size: clamp(17px, 2vw, 20px); max-width: 640px; margin: 0 auto; }
+    .hero-ctas { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+    .hero-meta { margin-top: 16px; font-size: 13px; color: var(--muted); }
+    .hero-meta a { text-decoration: underline; text-underline-offset: 3px; }
+    .hero-meta a:hover { color: var(--text-2); }
+
+    /* ── Mockup ──────────────────────────────────────────── */
+    .stage { position: relative; margin: 70px auto 0; max-width: 1040px; }
+    .window {
+      background: var(--bg-2); border-radius: 14px; border: 1px solid rgba(255, 255, 255, .1);
+      box-shadow: 0 50px 120px -30px rgba(0, 0, 0, .9), 0 0 0 1px rgba(0, 0, 0, .5), 0 30px 80px -40px rgba(29, 185, 84, .35);
+      overflow: hidden; text-align: left; font-size: 13px;
+    }
+    .titlebar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #0a0a0a; }
+    .titlebar i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .titlebar i:nth-child(1) { background: #ff5f57; } .titlebar i:nth-child(2) { background: #febc2e; } .titlebar i:nth-child(3) { background: #28c840; }
+    .app { display: grid; grid-template-columns: 210px 1fr; height: 440px; }
+    .side { background: #000; padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+    .side .logo { display: flex; align-items: center; gap: 8px; font-weight: 900; padding: 4px 10px 14px; font-size: 14px; }
+    .side .logo span { width: 22px; height: 22px; border-radius: 50%; background: var(--green); color: #000; display: grid; place-items: center; font-size: 11px; }
+    .side .nav { padding: 7px 10px; border-radius: 6px; color: var(--text-2); font-weight: 600; }
+    .side .nav.on { background: rgba(255, 255, 255, .1); color: #fff; }
+    .side hr { border: 0; border-top: 1px solid var(--line); margin: 10px 8px; }
+    .side .label { font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--muted); padding: 2px 10px 6px; }
+    .pl { display: flex; align-items: center; gap: 9px; padding: 6px 10px; border-radius: 6px; }
+    .pl.on { background: rgba(255, 255, 255, .07); }
+    .pl .art { width: 30px; height: 30px; border-radius: 4px; flex-shrink: 0; }
+    .pl b { display: block; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pl small { display: block; font-size: 10.5px; color: var(--muted); }
+    .main { background: linear-gradient(180deg, rgba(29, 185, 84, .28), var(--bg-2) 46%); padding: 26px 26px 0; overflow: hidden; }
+    .ph { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 18px; }
+    .ph .cover {
+      width: 120px; height: 120px; border-radius: 8px; flex-shrink: 0;
+      background: linear-gradient(135deg, #1ed760, #0d6b30 60%, #062e16);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, .5); display: grid; place-items: center; font-size: 46px;
+    }
+    .ph small { font-size: 10px; font-weight: 800; letter-spacing: .12em; color: rgba(255, 255, 255, .7); }
+    .ph h3 { font-size: 34px; font-weight: 900; letter-spacing: -.03em; line-height: 1.1; margin: 2px 0 6px; }
+    .ph p { color: var(--text-2); font-size: 12px; }
+    .ph p em { color: var(--green); font-style: normal; font-weight: 600; }
+    .row { display: grid; grid-template-columns: 26px 34px 1fr 44px; gap: 12px; align-items: center; padding: 6px 8px; border-radius: 6px; }
+    .row.on { background: rgba(255, 255, 255, .08); }
+    .row .n { color: var(--muted); text-align: center; }
+    .row .th { width: 34px; height: 34px; border-radius: 4px; }
+    .row b { display: block; font-weight: 600; font-size: 12.5px; }
+    .row.on b { color: var(--green); }
+    .row small { display: block; color: var(--muted); font-size: 11px; }
+    .row .t { color: var(--muted); font-size: 11.5px; text-align: right; font-variant-numeric: tabular-nums; }
+    .eq { display: flex; gap: 2px; align-items: flex-end; height: 13px; justify-content: center; }
+    .eq i { width: 3px; background: var(--green); border-radius: 2px; animation: eq 1s ease-in-out infinite; }
+    .eq i:nth-child(2) { animation-delay: .2s; } .eq i:nth-child(3) { animation-delay: .4s; }
+    @keyframes eq { 0%, 100% { height: 4px; } 50% { height: 13px; } }
+    .player {
+      display: grid; grid-template-columns: 210px 1fr 150px; align-items: center; gap: 16px;
+      height: 74px; padding: 0 16px; background: #0a0a0a; border-top: 1px solid var(--line);
+    }
+    .np { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .np .th { width: 42px; height: 42px; border-radius: 5px; flex-shrink: 0; }
+    .np b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .np small { color: var(--muted); font-size: 11px; }
+    .ctrl { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .ctrl .btns { display: flex; align-items: center; gap: 18px; color: var(--text-2); }
+    .ctrl .play { width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+    .bar { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 380px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .bar .track { flex: 1; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+    .bar .fill { height: 100%; width: 38%; background: #fff; border-radius: 4px; animation: prog 24s linear infinite; }
+    @keyframes prog { from { width: 18%; } to { width: 92%; } }
+    .vol { display: flex; align-items: center; gap: 8px; justify-content: flex-end; color: var(--text-2); }
+    .vol .track { width: 80px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .18); }
+    .vol .track div { width: 70%; height: 100%; background: #fff; border-radius: 4px; }
+
+    .phone {
+      position: absolute; right: -34px; bottom: -46px; width: 210px; height: 430px; border-radius: 34px;
+      background: #000; border: 7px solid #1c1c1c; box-shadow: 0 40px 90px -20px rgba(0, 0, 0, .95), 0 0 0 1px rgba(255, 255, 255, .08);
+      padding: 26px 16px 18px; display: flex; flex-direction: column; text-align: center;
+      background-image: linear-gradient(180deg, rgba(124, 58, 237, .45), #000 62%);
+    }
+    .phone .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 64px; height: 14px; border-radius: 10px; background: #111; }
+    .phone .hdr { font-size: 9px; font-weight: 800; letter-spacing: .16em; color: rgba(255, 255, 255, .7); margin-bottom: 16px; }
+    .phone .big { aspect-ratio: 1; border-radius: 12px; margin-bottom: 18px; background: linear-gradient(135deg, #a78bfa, #6d28d9 55%, #2e1065); display: grid; place-items: center; font-size: 54px; box-shadow: 0 20px 40px rgba(0, 0, 0, .5); }
+    .phone b { font-size: 14px; text-align: left; }
+    .phone small { font-size: 11px; color: var(--text-2); text-align: left; display: block; }
+    .phone .bar { margin-top: 14px; }
+    .phone .pbtns { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; color: #fff; padding: 0 4px; }
+    .phone .pbtns .play { width: 44px; height: 44px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+
+    @media (max-width: 980px) { .phone { display: none; } }
+    @media (max-width: 760px) {
+      .app { grid-template-columns: 1fr; height: 400px; }
+      .side { display: none; }
+      .player { grid-template-columns: 1fr auto; }
+      .player .ctrl .bar, .vol { display: none; }
+      .ph .cover { width: 84px; height: 84px; font-size: 32px; }
+      .ph h3 { font-size: 24px; }
+    }
+
+    /* ── Logos strip ─────────────────────────────────────── */
+    .sources { padding: 70px 0 0; }
+    .sources .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 40px; color: var(--muted); font-size: 14px; font-weight: 600; }
+    .sources .src { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 15px; }
+    .sources .src svg { width: 26px; height: 26px; }
+
+    /* ── Features ────────────────────────────────────────── */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; }
+    @media (max-width: 960px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px;
+      transition: background .2s, transform .2s, border-color .2s;
+    }
+    .card:hover { background: #1d1d1d; transform: translateY(-3px); border-color: rgba(255, 255, 255, .14); }
+    .card .ic {
+      width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 18px;
+      background: rgba(29, 185, 84, .12); color: var(--green);
+    }
+    .card .ic svg { width: 22px; height: 22px; }
+    .card h3 { font-size: 18px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 6px; }
+    .card p { color: var(--text-2); font-size: 15px; }
+    .card.wide { grid-column: span 2; display: flex; gap: 28px; align-items: center; }
+    @media (max-width: 620px) { .card.wide { grid-column: auto; flex-direction: column; align-items: flex-start; } }
+    .card.wide .viz { flex-shrink: 0; display: flex; gap: 4px; align-items: flex-end; height: 70px; }
+    .card.wide .viz i { width: 7px; border-radius: 3px; background: linear-gradient(to top, var(--green), #7cf0a8); animation: viz 1.4s ease-in-out infinite; }
+    @keyframes viz { 0%, 100% { height: 14px; } 50% { height: 70px; } }
+
+    /* ── Steps ───────────────────────────────────────────── */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; counter-reset: step; }
+    @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+    .step { position: relative; padding: 30px 26px 26px; border-radius: var(--radius); background: linear-gradient(180deg, #161616, #101010); border: 1px solid var(--line); }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+      background: var(--green); color: #000; font-weight: 900; margin-bottom: 18px;
+    }
+    .step h3 { font-size: 19px; font-weight: 800; margin-bottom: 6px; }
+    .step p { color: var(--text-2); font-size: 15px; }
+    .step code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: rgba(255, 255, 255, .07); padding: 2px 6px; border-radius: 5px; color: #d6d6d6; word-break: break-all; }
+
+    /* ── Download ────────────────────────────────────────── */
+    #download { background: radial-gradient(800px 400px at 50% 0%, rgba(29, 185, 84, .16), transparent 70%); }
+    .dl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; }
+    @media (max-width: 900px) { .dl-grid { grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto; } }
+    .dl {
+      position: relative; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line);
+      border-radius: 20px; padding: 30px 26px 26px; transition: border-color .2s, transform .2s;
+    }
+    .dl:hover { transform: translateY(-3px); }
+    .dl.rec { border-color: rgba(29, 185, 84, .7); box-shadow: 0 0 0 1px rgba(29, 185, 84, .4), 0 30px 70px -30px rgba(29, 185, 84, .45); }
+    .dl .tag {
+      position: absolute; top: -11px; left: 26px; background: var(--green); color: #000; font-size: 11px; font-weight: 800;
+      letter-spacing: .06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; display: none;
+    }
+    .dl.rec .tag { display: block; }
+    .dl .os { width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; background: rgba(255, 255, 255, .06); margin-bottom: 18px; }
+    .dl .os svg { width: 26px; height: 26px; }
+    .dl h3 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+    .dl .req { color: var(--muted); font-size: 13.5px; margin: 2px 0 20px; }
+    .dl .btn { justify-content: center; width: 100%; }
+    .dl .file { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 10px; font-variant-numeric: tabular-nums; }
+    .dl details { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; font-size: 14px; color: var(--text-2); }
+    .dl summary { cursor: pointer; font-weight: 600; color: var(--text); list-style: none; display: flex; justify-content: space-between; }
+    .dl summary::-webkit-details-marker { display: none; }
+    .dl summary::after { content: "+"; color: var(--muted); font-weight: 400; font-size: 18px; line-height: 1; }
+    .dl details[open] summary::after { content: "−"; }
+    .dl ol { padding-left: 18px; margin-top: 10px; }
+    .dl li { margin: 4px 0; }
+    .dl li b { color: var(--text); font-weight: 600; }
+    .ios-note { margin: 26px auto 0; max-width: 620px; text-align: center; color: var(--muted); font-size: 14px; }
+    .ios-note.show { color: var(--text-2); background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+    .all-rel { text-align: center; margin-top: 18px; font-size: 14px; color: var(--muted); }
+    .all-rel a { color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
+
+    /* ── Tech ────────────────────────────────────────────── */
+    .tech { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 34px; }
+    .tech span { padding: 8px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; font-weight: 600; color: var(--text-2); }
+
+    /* ── FAQ ─────────────────────────────────────────────── */
+    .faq { max-width: 760px; margin: 46px auto 0; }
+    .faq details { border-bottom: 1px solid var(--line); padding: 20px 4px; }
+    .faq summary { cursor: pointer; font-weight: 700; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 20px; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; color: var(--green); font-size: 24px; line-height: 1; font-weight: 400; transition: transform .2s; }
+    .faq details[open] summary::after { transform: rotate(45deg); }
+    .faq p { color: var(--text-2); margin-top: 10px; font-size: 15.5px; }
+
+    /* ── CTA + footer ────────────────────────────────────── */
+    .final {
+      margin: 0 auto; max-width: var(--max); border-radius: 28px; padding: 70px 30px; text-align: center;
+      background: linear-gradient(135deg, #1ed760 0%, #129a44 55%, #0b5e2a 100%); color: #000;
+      position: relative; overflow: hidden;
+    }
+    .final h2 { font-size: clamp(30px, 4.6vw, 50px); font-weight: 900; letter-spacing: -.035em; line-height: 1.05; }
+    .final p { font-size: 18px; margin: 12px auto 28px; max-width: 520px; color: rgba(0, 0, 0, .75); font-weight: 500; }
+    .final .btn-dark { background: #000; color: #fff; }
+    .final .btn-dark:hover { background: #1a1a1a; }
+    .final-wrap { padding: 0 24px 110px; }
+    footer { border-top: 1px solid var(--line); padding: 34px 0 44px; color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+    footer .links { display: flex; gap: 22px; }
+    footer a:hover { color: var(--text); }
+    footer .fine { width: 100%; font-size: 12.5px; color: #5a5a5a; margin-top: 6px; }
+
+    /* ── Reveal on scroll ────────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      *, *::before, *::after { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Icons (reused below via <use>) ──────────────────────────────── -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-apple" viewBox="0 0 24 24"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.96.9-3.76 2.27-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.66zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.66 1.37-.58.67-1.1 1.76-.96 2.79 1.01.08 2.05-.51 2.68-1.27z"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 24 24"><path fill="currentColor" d="M3 5.5 10.4 4.5v7H3v-6zm0 13 7.4 1v-7H3v6zm8.3 1.1L21 21v-8.4h-9.7v7zm0-15.2v7.1H21V3l-9.7 1.4z"/></symbol>
+    <symbol id="i-android" viewBox="0 0 24 24"><path fill="currentColor" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22a11.5 11.5 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></symbol>
+    <symbol id="i-dl" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></symbol>
+    <symbol id="i-yt" viewBox="0 0 24 24"><path fill="#ff0033" d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-4.8 31 31 0 0 0-.5-4.8z"/><path fill="#fff" d="m9.8 15.1 5.8-3.1-5.8-3.1z"/></symbol>
+    <symbol id="i-sp" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11.5" fill="#1db954"/><path fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" d="M6.5 9.3c3.8-1.1 8-.8 11.2 1.1M7.2 12.6c3.1-.9 6.4-.6 9.1 1M7.9 15.7c2.4-.6 4.9-.4 6.9.8"/></symbol>
+  </svg>
+
+  <nav>
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="icon.svg" alt="" />OfflineBeats</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/sumit-songara/musicApp" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="#download">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="wrap hero-inner">
+      <span class="pill"><b id="ver-pill">NEW</b> <span id="ver-text">Free for Mac, Windows &amp; Android</span></span>
+      <h1>Your music.<br /><span class="grad">Offline. Forever.</span></h1>
+      <p class="sub">Paste a YouTube or Spotify playlist link and OfflineBeats downloads every song. After that it plays anywhere, with no internet, no ads and no subscription.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" id="hero-dl" href="#download">
+          <svg><use href="#i-dl" /></svg><span id="hero-dl-label">Download free</span>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/sumit-songara/musicApp" target="_blank" rel="noopener">
+          <svg><use href="#i-github" /></svg>View source
+        </a>
+      </div>
+      <p class="hero-meta" id="hero-meta">Open source · MIT licensed · <a href="#download">All platforms</a></p>
+
+      <!-- Product mockup -->
+      <div class="stage reveal" aria-hidden="true">
+        <div class="window">
+          <div class="titlebar"><i></i><i></i><i></i></div>
+          <div class="app">
+            <aside class="side">
+              <div class="logo"><span>♫</span>OfflineBeats</div>
+              <div class="nav on">Home</div>
+              <div class="nav">Your Library</div>
+              <hr />
+              <div class="label">PLAYLISTS</div>
+              <div class="pl on"><div class="art" style="background:linear-gradient(135deg,#1ed760,#0d6b30)"></div><div><b>Road Trip Mix</b><small>spotify · 24</small></div></div>
+              <div class="pl"><div class="art" style="background:linear-gradient(135deg,#ff6b6b,#7a1010)"></div><div><b>Late Night Lo-fi</b><small>youtube · 41</small></div></div>
+              <div class="pl"><div class="art" style="background:linear-gradient(135deg,#a78bfa,#4c1d95)"></div><div><b>Liked Songs</b><small>12 songs</small></div></div>
+              <div class="pl"><div class="art" style="background:linear-gradient(135deg,#60a5fa,#1e3a8a)"></div><div><b>~/Music</b><small>local · 318</small></div></div>
+            </aside>
+            <div class="main">
+              <div class="ph">
+                <div class="cover">🚗</div>
+                <div>
+                  <small>SPOTIFY PLAYLIST</small>
+                  <h3>Road Trip Mix</h3>
+                  <p>24 / 24 tracks downloaded · <em>available offline</em></p>
+                </div>
+              </div>
+              <div class="row"><span class="n">1</span><div class="th" style="background:linear-gradient(135deg,#f59e0b,#7c2d12)"></div><div><b>Golden Hour Static</b><small>Low Orbit</small></div><span class="t">3:42</span></div>
+              <div class="row on"><span class="n"><span class="eq"><i></i><i></i><i></i></span></span><div class="th" style="background:linear-gradient(135deg,#22d3ee,#155e75)"></div><div><b>Neon Skyline</b><small>Aria Vale</small></div><span class="t">4:05</span></div>
+              <div class="row"><span class="n">3</span><div class="th" style="background:linear-gradient(135deg,#f472b6,#831843)"></div><div><b>Northbound</b><small>Kite Theory</small></div><span class="t">3:18</span></div>
+              <div class="row"><span class="n">4</span><div class="th" style="background:linear-gradient(135deg,#a3e635,#365314)"></div><div><b>Slow Tide</b><small>The Quiet Hours</small></div><span class="t">5:01</span></div>
+              <div class="row"><span class="n">5</span><div class="th" style="background:linear-gradient(135deg,#818cf8,#312e81)"></div><div><b>Glass Garden</b><small>Mira Lune</small></div><span class="t">3:56</span></div>
+            </div>
+          </div>
+          <div class="player">
+            <div class="np"><div class="th" style="background:linear-gradient(135deg,#22d3ee,#155e75)"></div><div style="min-width:0"><b>Neon Skyline</b><small>Aria Vale</small></div></div>
+            <div class="ctrl">
+              <div class="btns">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+                <span class="play"><svg width="14" height="14" viewBox="0 0 24 24" fill="#000"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>
+              </div>
+              <div class="bar"><span>1:34</span><div class="track"><div class="fill"></div></div><span>4:05</span></div>
+            </div>
+            <div class="vol"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12z"/></svg><div class="track"><div></div></div></div>
+          </div>
+        </div>
+
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="hdr">NOW PLAYING</div>
+          <div class="big">♥</div>
+          <b>Glass Garden</b>
+          <small>Mira Lune · Liked Songs</small>
+          <div class="bar"><span>0:52</span><div class="track"><div class="fill"></div></div><span>3:56</span></div>
+          <div class="pbtns">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+            <span class="play"><svg width="18" height="18" viewBox="0 0 24 24" fill="#000"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="sources">
+    <div class="wrap">
+      <span>Works with</span>
+      <span class="src"><svg><use href="#i-yt" /></svg>YouTube</span>
+      <span class="src"><svg><use href="#i-sp" /></svg>Spotify</span>
+      <span class="src"><svg viewBox="0 0 24 24" fill="none" stroke="#4f8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Your own music files</span>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap center">
+      <span class="eyebrow reveal">Features</span>
+      <h2 class="title reveal">Everything you need, nothing you don't</h2>
+      <p class="lede reveal">A clean, Spotify-style player for the music you already love. It runs on your own devices and works without an account.</p>
+    </div>
+    <div class="wrap">
+      <div class="grid">
+        <div class="card reveal">
+          <div class="ic" style="background:rgba(255,78,69,.12);color:var(--red)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+          <h3>YouTube playlists</h3>
+          <p>Paste any public playlist link and every track downloads as a 192&nbsp;kbps MP3, with titles and cover art.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9.5c4.5-1.3 9.5-1 13.3 1.3M6 13.4c3.6-1 7.6-.7 10.7 1.2M7 17c2.8-.7 5.8-.5 8.2.9"/></svg></div>
+          <h3>Spotify playlists</h3>
+          <p>OfflineBeats finds each Spotify track on YouTube Music and saves it for you. You don't need a Spotify account or Premium.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic" style="background:rgba(79,140,255,.12);color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <h3>Your local library</h3>
+          <p>Point it at any folder of MP3, FLAC, M4A, WAV or OGG files and they're ready to play in seconds. Your original files are never moved or changed.</p>
+        </div>
+        <div class="card wide reveal">
+          <div class="viz" aria-hidden="true">
+            <i style="animation-delay:0s"></i><i style="animation-delay:.15s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.45s"></i><i style="animation-delay:.6s"></i><i style="animation-delay:.75s"></i><i style="animation-delay:.9s"></i><i style="animation-delay:1.05s"></i>
+          </div>
+          <div>
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2-1.5M1.4 9a15 15 0 0 1 4.2-2.7M22.6 9A15 15 0 0 0 10.7 5M12 20h.01"/></svg></div>
+            <h3>Truly offline</h3>
+            <p>Once a song is downloaded it's a file on your device, so it plays on a plane, on the subway or anywhere else with no signal, for as long as you keep it. There's a live audio visualizer, plus shuffle and repeat.</p>
+          </div>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
+          <h3>Native Android app</h3>
+          <p>The Android app downloads straight to your phone and has lock-screen controls, background playback and drag-and-drop playlist ordering.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM20 14v.01M14 20v.01M17 17h4v4h-4"/></svg></div>
+          <h3>Phone access over WiFi</h3>
+          <p>Scan a QR code in the desktop app and your phone streams your whole laptop library on the same WiFi.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></div>
+          <h3>Updates itself</h3>
+          <p>The app checks for new versions when it starts and tells you when one is ready, so you don't have to come back to this site.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <h3>Private by design</h3>
+          <p>There are no accounts, no tracking and no cloud. Your library and listening stay on your own devices.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="padding-top:20px">
+    <div class="wrap center">
+      <span class="eyebrow reveal">How it works</span>
+      <h2 class="title reveal">From link to offline in three steps</h2>
+    </div>
+    <div class="wrap">
+      <div class="steps">
+        <div class="step reveal">
+          <h3>Install OfflineBeats</h3>
+          <p>Download the app for your Mac, Windows PC or Android phone below. Everything it needs comes in the installer, so there's nothing else to set up.</p>
+        </div>
+        <div class="step reveal">
+          <h3>Paste a playlist link</h3>
+          <p>Click <b>+</b> and paste a link like <code>youtube.com/playlist?list=…</code> or <code>open.spotify.com/playlist/…</code>. A single song works too.</p>
+        </div>
+        <div class="step reveal">
+          <h3>Press play, anywhere</h3>
+          <p>Tracks appear as they finish downloading. After that you can turn off WiFi and your music keeps playing.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="wrap center">
+      <span class="eyebrow reveal">Download</span>
+      <h2 class="title reveal">Get OfflineBeats free</h2>
+      <p class="lede reveal" id="dl-lede">Pick your platform. Every download is the latest release, built straight from the open-source code on GitHub.</p>
+    </div>
+    <div class="wrap">
+      <div class="dl-grid">
+        <div class="dl reveal" data-os="mac">
+          <span class="tag">Recommended for you</span>
+          <div class="os"><svg><use href="#i-apple" /></svg></div>
+          <h3>macOS</h3>
+          <p class="req">Apple Silicon (M1 or newer) · macOS 12+</p>
+          <a class="btn btn-primary" href="https://github.com/sumit-songara/musicApp/releases/latest/download/OfflineBeats-mac.dmg" data-asset="OfflineBeats-mac.dmg">
+            <svg><use href="#i-dl" /></svg>Download .dmg
+          </a>
+          <p class="file" data-meta="OfflineBeats-mac.dmg">OfflineBeats-mac.dmg</p>
+          <details>
+            <summary>How to install</summary>
+            <ol>
+              <li>Open the <b>.dmg</b> and drag <b>OfflineBeats</b> into <b>Applications</b>.</li>
+              <li>The first time, <b>right-click</b> the app → <b>Open</b> → <b>Open</b>. The app isn't notarized by Apple yet, so macOS asks once.</li>
+              <li>If macOS still blocks it, go to System Settings → Privacy &amp; Security and click <b>Open Anyway</b>.</li>
+            </ol>
+          </details>
+        </div>
+
+        <div class="dl reveal" data-os="windows">
+          <span class="tag">Recommended for you</span>
+          <div class="os"><svg><use href="#i-windows" /></svg></div>
+          <h3>Windows</h3>
+          <p class="req">Windows 10 or 11 · 64-bit</p>
+          <a class="btn btn-primary" href="https://github.com/sumit-songara/musicApp/releases/latest/download/OfflineBeats-win-setup.exe" data-asset="OfflineBeats-win-setup.exe">
+            <svg><use href="#i-dl" /></svg>Download .exe
+          </a>
+          <p class="file" data-meta="OfflineBeats-win-setup.exe">OfflineBeats-win-setup.exe</p>
+          <details>
+            <summary>How to install</summary>
+            <ol>
+              <li>Run <b>OfflineBeats-win-setup.exe</b>.</li>
+              <li>If SmartScreen says “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>. The installer isn't code-signed yet.</li>
+              <li>Launch <b>OfflineBeats</b> from the Start menu.</li>
+            </ol>
+          </details>
+        </div>
+
+        <div class="dl reveal" data-os="android">
+          <span class="tag">Recommended for you</span>
+          <div class="os"><svg><use href="#i-android" /></svg></div>
+          <h3>Android</h3>
+          <p class="req">Android 7.0 or newer</p>
+          <a class="btn btn-primary" href="https://github.com/sumit-songara/musicApp/releases/latest/download/OfflineBeats-android.apk" data-asset="OfflineBeats-android.apk">
+            <svg><use href="#i-dl" /></svg>Download .apk
+          </a>
+          <p class="file" data-meta="OfflineBeats-android.apk">OfflineBeats-android.apk</p>
+          <details>
+            <summary>How to install</summary>
+            <ol>
+              <li>Open this page on your phone and tap <b>Download .apk</b>.</li>
+              <li>Open the downloaded file. If asked, allow your browser to <b>install unknown apps</b>.</li>
+              <li>Tap <b>Install</b>. Future updates are offered right inside the app.</li>
+            </ol>
+          </details>
+        </div>
+      </div>
+      <p class="ios-note" id="ios-note">On iPhone? There's no iOS app yet, but you can open your desktop library in Safari over WiFi using <b>Open on Mobile</b> in the desktop app.</p>
+      <p class="all-rel">Looking for an older version or the release notes? <a href="https://github.com/sumit-songara/musicApp/releases" target="_blank" rel="noopener">See all releases on GitHub</a></p>
+    </div>
+  </section>
+
+  <section style="padding-top:20px">
+    <div class="wrap center">
+      <span class="eyebrow reveal">Under the hood</span>
+      <h2 class="title reveal">Built with</h2>
+      <p class="lede reveal">One codebase each for desktop and mobile, and a small local server that does the downloading.</p>
+      <div class="tech reveal">
+        <span>React 18</span><span>Electron</span><span>React Native · Expo</span><span>Python · Flask</span><span>yt-dlp</span><span>spotDL</span><span>SQLite</span><span>Tailwind CSS</span><span>Framer Motion</span><span>Zustand</span><span>Web Audio API</span><span>GitHub Actions</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top:20px">
+    <div class="wrap center">
+      <span class="eyebrow reveal">FAQ</span>
+      <h2 class="title reveal">Questions, answered</h2>
+    </div>
+    <div class="wrap">
+      <div class="faq">
+        <details class="reveal">
+          <summary>Is OfflineBeats really free?</summary>
+          <p>Yes. There are no ads, no subscription and no in-app purchases. It's open source under the MIT license.</p>
+        </details>
+        <details class="reveal">
+          <summary>Do I need a Spotify or YouTube account?</summary>
+          <p>No. Public playlists work without signing in to anything. For Spotify playlists, OfflineBeats only reads the track list and then downloads each song from YouTube Music.</p>
+        </details>
+        <details class="reveal">
+          <summary>Where are my songs stored?</summary>
+          <p>On a Mac or PC, downloads go to <b>Music/OfflineBeats</b> in your home folder as normal MP3 files you can use anywhere. On Android, they're saved inside the app's own storage on your phone.</p>
+        </details>
+        <details class="reveal">
+          <summary>Why does my computer warn me when I open it?</summary>
+          <p>OfflineBeats is an independent project and isn't signed with a paid Apple or Microsoft developer certificate yet. The source code is public on GitHub, and every installer is built there automatically by GitHub Actions. The install steps above show how to open it.</p>
+        </details>
+        <details class="reveal">
+          <summary>Is there an iPhone app?</summary>
+          <p>Not yet. In the meantime, use <b>Open on Mobile</b> in the desktop app to stream your library to Safari over your home WiFi.</p>
+        </details>
+        <details class="reveal">
+          <summary>Is downloading music legal?</summary>
+          <p>OfflineBeats is a tool for personal, offline listening. Please only download content you have the right to, and respect the terms of the services you use and the artists who make the music.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <div class="final-wrap">
+    <div class="final reveal">
+      <h2>Take your music off the grid.</h2>
+      <p>Download once and listen forever, on every device you own.</p>
+      <a class="btn btn-dark" href="#download"><svg><use href="#i-dl" /></svg>Download OfflineBeats</a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="icon.svg" alt="" />OfflineBeats</a>
+      <div class="links">
+        <a href="https://github.com/sumit-songara/musicApp" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/sumit-songara/musicApp/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/sumit-songara/musicApp/issues" target="_blank" rel="noopener">Report a bug</a>
+      </div>
+      <p class="fine">Built by Sumit Songara · MIT License · Not affiliated with YouTube, Google or Spotify.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      // ── Detect platform and highlight the matching download ──────────────
+      var ua = navigator.userAgent || ''
+      var plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || ''
+      var isIOS = /iPhone|iPad|iPod/.test(ua) || (plat === 'MacIntel' && navigator.maxTouchPoints > 1)
+      var os = /Android/i.test(ua) ? 'android'
+        : isIOS ? 'ios'
+        : /Win/i.test(plat) || /Windows/i.test(ua) ? 'windows'
+        : /Mac/i.test(plat) || /Macintosh/i.test(ua) ? 'mac'
+        : null
+
+      var labels = { mac: 'Download for Mac', windows: 'Download for Windows', android: 'Download for Android' }
+      var card = os && document.querySelector('.dl[data-os="' + os + '"]')
+      if (card) {
+        card.classList.add('rec')
+        var direct = card.querySelector('a[data-asset]')
+        var hero = document.getElementById('hero-dl')
+        hero.href = direct.href
+        document.getElementById('hero-dl-label').textContent = labels[os]
+        document.getElementById('hero-meta').innerHTML =
+          'Free · Open source · <a href="#download">Other platforms</a>'
+      }
+      if (os === 'ios') document.getElementById('ios-note').classList.add('show')
+
+      // ── Fill in version + file sizes from the latest GitHub release ──────
+      // Links above already work without this (they use /releases/latest/download/…)
+      fetch('https://api.github.com/repos/sumit-songara/musicApp/releases/latest', {
+        headers: { Accept: 'application/vnd.github+json' }
+      })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject() })
+        .then(function (rel) {
+          var v = rel.tag_name || ''
+          if (v) {
+            document.getElementById('ver-pill').textContent = v
+            var d = rel.published_at ? new Date(rel.published_at) : null
+            document.getElementById('ver-text').textContent =
+              'Latest release' + (d ? ' · ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '')
+          }
+          ;(rel.assets || []).forEach(function (a) {
+            var el = document.querySelector('[data-meta="' + a.name + '"]')
+            if (el) el.textContent = v + ' · ' + (a.size / 1048576).toFixed(0) + ' MB'
+          })
+        })
+        .catch(function () { /* offline or rate-limited — static text stays */ })
+
+      // ── Reveal on scroll ─────────────────────────────────────────────────
+      var els = document.querySelectorAll('.reveal')
+      if (!('IntersectionObserver' in window)) {
+        els.forEach(function (el) { el.classList.add('in') })
+        return
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
+        })
+      }, { rootMargin: '0px 0px -8% 0px' })
+      els.forEach(function (el) { io.observe(el) })
+    })()
+  </script>
+</body>
+</html>
